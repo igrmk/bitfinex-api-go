@@ -1296,13 +1296,11 @@ type BookUpdate struct {
 }
 
 type BookUpdateSnapshot struct {
-	Snapshot []*BookUpdate
+	Symbol   string        // book symbol
+	Snapshot []*BookUpdate // book levels
 }
 
 func NewBookUpdateSnapshotFromRaw(symbol, precision string, raw [][]float64) (*BookUpdateSnapshot, error) {
-	if len(raw) <= 0 {
-		return nil, fmt.Errorf("data slice too short for book snapshot: %#v", raw)
-	}
 	snap := make([]*BookUpdate, len(raw))
 	for i, f := range raw {
 		b, err := NewBookUpdateFromRaw(symbol, precision, ToInterface(f))
@@ -1311,7 +1309,7 @@ func NewBookUpdateSnapshotFromRaw(symbol, precision string, raw [][]float64) (*B
 		}
 		snap[i] = b
 	}
-	return &BookUpdateSnapshot{Snapshot: snap}, nil
+	return &BookUpdateSnapshot{Symbol: symbol, Snapshot: snap}, nil
 }
 
 func IsRawBook(precision string) bool {
