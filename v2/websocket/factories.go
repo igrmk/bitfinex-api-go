@@ -1,7 +1,7 @@
 package websocket
 
 import (
-	"github.com/bitfinexcom/bitfinex-api-go/v2"
+	"github.com/igrmk/bitfinex-api-go/v2"
 )
 
 type messageFactory interface {

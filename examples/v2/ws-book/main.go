@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/bitfinexcom/bitfinex-api-go/v2"
-	"github.com/bitfinexcom/bitfinex-api-go/v2/websocket"
+	"github.com/igrmk/bitfinex-api-go/v2"
+	"github.com/igrmk/bitfinex-api-go/v2/websocket"
 )
 
 func main() {

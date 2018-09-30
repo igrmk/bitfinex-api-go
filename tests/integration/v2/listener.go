@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	bitfinex "github.com/bitfinexcom/bitfinex-api-go/v2"
-	"github.com/bitfinexcom/bitfinex-api-go/v2/websocket"
+	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
+	"github.com/igrmk/bitfinex-api-go/v2/websocket"
 )
 
 type listener struct {
