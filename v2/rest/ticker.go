@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 )
@@ -28,10 +29,11 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		if !ok {
 			return nil, fmt.Errorf("expecting array, got %T", ifacearr)
 		}
-		if len(arr) != 11 {
+		if len(arr) != 11 && len(arr) != 12 {
 			return nil, errors.New("invalid length of ticker")
 		}
 		symbol, ok := arr[0].(string)
+		symbol = strings.ToLower(symbol[1:])
 		if !ok {
 			return nil, fmt.Errorf("expecting string, got %T", arr[0])
 		}
@@ -43,7 +45,10 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 			}
 			sub[j] = flt
 		}
-		entry := &bitfinex.Ticker{
+		var entry *bitfinex.Ticker
+		switch len(arr) {
+		case 11:
+			entry = &bitfinex.Ticker{
 			Symbol:          symbol,
 			Bid:             sub[0],
 			BidSize:         sub[1],
@@ -55,6 +60,22 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 			Volume:          sub[7],
 			High:            sub[8],
 			Low:             sub[9],
+			}
+		case 12:
+			entry = &bitfinex.Ticker{
+				Symbol:          symbol,
+				FRR:             sub[0],
+				Bid:             sub[1],
+				BidSize:         sub[2],
+				Ask:             sub[3],
+				AskSize:         sub[4],
+				DailyChange:     sub[5],
+				DailyChangePerc: sub[6],
+				LastPrice:       sub[7],
+				Volume:          sub[8],
+				High:            sub[9],
+				Low:             sub[10],
+			}
 		}
 		tickers[i] = entry
 	}
