@@ -33,7 +33,10 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		if !ok {
 			return nil, fmt.Errorf("expecting string, got %T", arr[0])
 		}
-		if (symbol[0] == 't' && len(arr) < 11) || (symbol[0] == 'f' && len(arr) < 14) || (symbol[0] != 't' && symbol[0] != 'f') {
+		if len(symbol) <= 1 || (symbol[0] != 't' && symbol[0] != 'f') {
+			return nil, errors.New("invalid symbol")
+		}
+		if (symbol[0] == 't' && len(arr) < 11) || (symbol[0] == 'f' && len(arr) < 14) {
 			return nil, errors.New("invalid length of ticker")
 		}
 		sub := make([]float64, len(arr)-1)
