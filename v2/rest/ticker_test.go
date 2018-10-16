@@ -9,7 +9,7 @@ import (
 
 func TestTickerAll(t *testing.T) {
 	httpDo := func(_ *http.Client, req *http.Request) (*http.Response, error) {
-		msg := `[["tSYMBOL1",3.00,0.01,0.02,4,0.03,0.04,5,0.05,0.06,0.07,0.08,0.09,0.10],["tSYMBOL2",0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.50]]`
+		msg := `[["fSYMBOL1",3.00,0.01,0.02,4,0.03,0.04,5,0.05,0.06,0.07,0.08,0.09,0.10],["tSYMBOL2",0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.50]]`
 		resp := http.Response{
 			Body:       ioutil.NopCloser(bytes.NewBufferString(msg)),
 			StatusCode: 200,

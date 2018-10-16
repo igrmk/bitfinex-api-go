@@ -29,13 +29,12 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		if !ok {
 			return nil, fmt.Errorf("expecting array, got %T", ifacearr)
 		}
-		if len(arr) != 11 && len(arr) != 14 {
-			return nil, errors.New("invalid length of ticker")
-		}
 		symbol, ok := arr[0].(string)
-		symbol = strings.ToLower(symbol[1:])
 		if !ok {
 			return nil, fmt.Errorf("expecting string, got %T", arr[0])
+		}
+		if (symbol[0] == 't' && len(arr) < 11) || (symbol[0] == 'f' && len(arr) < 14) || (symbol[0] != 't' && symbol[0] != 'f') {
+			return nil, errors.New("invalid length of ticker")
 		}
 		sub := make([]float64, len(arr)-1)
 		for j, iface := range arr[1:] {
@@ -46,24 +45,24 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 			sub[j] = flt
 		}
 		var entry *bitfinex.Ticker
-		switch len(arr) {
-		case 11:
+		switch symbol[0] {
+		case 't':
 			entry = &bitfinex.Ticker{
-			Symbol:          symbol,
-			Bid:             sub[0],
-			BidSize:         sub[1],
-			Ask:             sub[2],
-			AskSize:         sub[3],
-			DailyChange:     sub[4],
-			DailyChangePerc: sub[5],
-			LastPrice:       sub[6],
-			Volume:          sub[7],
-			High:            sub[8],
-			Low:             sub[9],
+				Symbol:          strings.ToLower(symbol[1:]),
+				Bid:             sub[0],
+				BidSize:         sub[1],
+				Ask:             sub[2],
+				AskSize:         sub[3],
+				DailyChange:     sub[4],
+				DailyChangePerc: sub[5],
+				LastPrice:       sub[6],
+				Volume:          sub[7],
+				High:            sub[8],
+				Low:             sub[9],
 			}
-		case 14:
+		case 'f':
 			entry = &bitfinex.Ticker{
-				Symbol:          symbol,
+				Symbol:          strings.ToLower(symbol[1:]),
 				FRR:             sub[0],
 				Bid:             sub[1],
 				BidSize:         sub[2],
