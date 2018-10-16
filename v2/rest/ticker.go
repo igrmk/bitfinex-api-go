@@ -29,7 +29,7 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		if !ok {
 			return nil, fmt.Errorf("expecting array, got %T", ifacearr)
 		}
-		if len(arr) != 11 && len(arr) != 12 {
+		if len(arr) != 11 && len(arr) != 14 {
 			return nil, errors.New("invalid length of ticker")
 		}
 		symbol, ok := arr[0].(string)
@@ -61,20 +61,22 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 			High:            sub[8],
 			Low:             sub[9],
 			}
-		case 12:
+		case 14:
 			entry = &bitfinex.Ticker{
 				Symbol:          symbol,
 				FRR:             sub[0],
 				Bid:             sub[1],
 				BidSize:         sub[2],
-				Ask:             sub[3],
-				AskSize:         sub[4],
-				DailyChange:     sub[5],
-				DailyChangePerc: sub[6],
-				LastPrice:       sub[7],
-				Volume:          sub[8],
-				High:            sub[9],
-				Low:             sub[10],
+				BidPeriod:       int64(sub[3]),
+				Ask:             sub[4],
+				AskSize:         sub[5],
+				AskPeriod:       int64(sub[6]),
+				DailyChange:     sub[7],
+				DailyChangePerc: sub[8],
+				LastPrice:       sub[9],
+				Volume:          sub[10],
+				High:            sub[11],
+				Low:             sub[12],
 			}
 		}
 		tickers[i] = entry
