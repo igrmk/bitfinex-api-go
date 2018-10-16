@@ -38,6 +38,10 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		}
 		sub := make([]float64, len(arr)-1)
 		for j, iface := range arr[1:] {
+			if iface == nil {
+				sub[j] = 0
+				continue
+			}
 			flt, ok := iface.(float64)
 			if !ok {
 				return nil, fmt.Errorf("expecting float64, got %T", iface)
