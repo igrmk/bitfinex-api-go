@@ -3,6 +3,7 @@ package rest
 import (
 	"errors"
 	"fmt"
+	"net/url"
 
 	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 )
@@ -13,6 +14,8 @@ type TickerService struct {
 
 func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 	req := NewRequestWithMethod("tickers", "GET")
+	req.Params = make(url.Values)
+	req.Params.Add("symbols", "ALL")
 	raw, err := t.Request(req)
 
 	if err != nil {
