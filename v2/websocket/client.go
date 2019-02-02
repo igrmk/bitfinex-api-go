@@ -91,6 +91,7 @@ func (w *WebsocketAsynchronousFactory) Create() Asynchronous {
 }
 
 // Client provides a unified interface for users to interact with the Bitfinex V2 Websocket API.
+// nolint:megacheck,structcheck
 type Client struct {
 	asyncFactory AsynchronousFactory // for re-creating transport during reconnects
 
@@ -107,17 +108,22 @@ type Client struct {
 	init               bool
 
 	// connection & operational behavior
-	parameters *Parameters
+	parameters         *Parameters
 
 	// subscription manager
-	subscriptions *subscriptions
-	factories     map[string]messageFactory
+	subscriptions      *subscriptions
+	factories          map[string]messageFactory
+	orderbooks         map[string]*Orderbook
 
 	// close signal sent to user on shutdown
-	shutdown chan bool
+	shutdown           chan bool
 
 	// downstream listener channel to deliver API objects
-	listener chan interface{}
+	listener           chan interface{}
+
+	// race management
+	lock						   sync.Mutex
+	waitGroup          sync.WaitGroup
 }
 
 // Credentials assigns authentication credentials to a connection request.
@@ -133,10 +139,13 @@ func (c *Client) CancelOnDisconnect(cxl bool) *Client {
 	return c
 }
 
-func (c *Client) sign(msg string) string {
+func (c *Client) sign(msg string) (string, error) {
 	sig := hmac.New(sha512.New384, []byte(c.apiSecret))
-	sig.Write([]byte(msg))
-	return hex.EncodeToString(sig.Sum(nil))
+	_, err := sig.Write([]byte(msg))
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(sig.Sum(nil)), nil
 }
 
 func (c *Client) registerFactory(channel string, factory messageFactory) {
@@ -180,11 +189,14 @@ func NewWithParamsAsyncFactoryNonce(params *Parameters, async AsynchronousFactor
 		Authentication: NoAuthentication,
 		factories:      make(map[string]messageFactory),
 		subscriptions:  newSubscriptions(params.HeartbeatTimeout),
+		orderbooks:     make(map[string]*Orderbook),
 		nonce:          nonce,
 		isConnected:    false,
 		parameters:     params,
 		listener:       make(chan interface{}),
 		terminal:       false,
+		shutdown:       nil,
+		asynchronous:   nil,
 	}
 	c.registerPublicFactories()
 	return c
@@ -208,7 +220,7 @@ func extractSymbolResolutionFromKey(subscription string) (symbol string, resolut
 func (c *Client) registerPublicFactories() {
 	c.registerFactory(ChanTicker, newTickerFactory(c.subscriptions))
 	c.registerFactory(ChanTrades, newTradeFactory(c.subscriptions))
-	c.registerFactory(ChanBook, newBookFactory(c.subscriptions))
+	c.registerFactory(ChanBook, newBookFactory(c.subscriptions, c.orderbooks, c.parameters.ManageOrderbook))
 	c.registerFactory(ChanCandles, newCandlesFactory(c.subscriptions))
 }
 
@@ -224,7 +236,10 @@ func (c *Client) listenDisconnect() {
 			log.Printf("socket disconnect: %s", e.Error())
 		}
 		c.isConnected = false
-		c.reconnect(e)
+		err := c.reconnect(e)
+		if err != nil {
+			log.Printf("socket disconnect: %s", err.Error())
+		}
 	case e := <-c.subscriptions.ListenDisconnect(): // subscription heartbeat timeout
 		if e != nil {
 			log.Printf("heartbeat disconnect: %s", e.Error())
@@ -232,10 +247,14 @@ func (c *Client) listenDisconnect() {
 		c.isConnected = false
 		if e != nil {
 			c.closeAsyncAndWait(c.parameters.ShutdownTimeout)
-			c.reconnect(e)
+			err := c.reconnect(e)
+			if err != nil {
+				log.Printf("socket disconnect: %s", err.Error())
+			}
 		}
 	case <-c.shutdown: // normal shutdown
 		c.isConnected = false
+		return // exit routine
 	}
 }
 
@@ -248,6 +267,7 @@ func (c *Client) dumpParams() {
 	log.Printf("ResubscribeOnReconnect=%t", c.parameters.ResubscribeOnReconnect)
 	log.Printf("HeartbeatTimeout=%s", c.parameters.HeartbeatTimeout)
 	log.Printf("URL=%s", c.parameters.URL)
+	log.Printf("ManageOrderbook=%t", c.parameters.ManageOrderbook)
 }
 
 // Connect to the Bitfinex API, this should only be called once.
@@ -260,12 +280,18 @@ func (c *Client) Connect() error {
 // reset assumes transport has already died or been closed
 func (c *Client) reset() {
 	subs := c.subscriptions.Reset()
+	// shutown if existing websocket connected
+	if c.shutdown != nil {
+		close(c.shutdown)
+	}
+
 	if subs != nil {
 		c.resetSubscriptions = subs
 	}
-	c.shutdown = make(chan bool)
 	c.init = true
 	c.asynchronous = c.asyncFactory.Create()
+	c.shutdown = make(chan bool)
+
 	// wait for shutdown signals from child & caller
 	go c.listenDisconnect()
 	// listen to data from async
@@ -277,28 +303,44 @@ func (c *Client) connect() error {
 	if err == nil {
 		c.isConnected = true
 	}
+	// enable flag
+	if c.parameters.ManageOrderbook {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		_, err_flag := c.EnableFlag(ctx, bitfinex.Checksum)
+		if err_flag != nil {
+			return err_flag
+		}
+	}
 	return err
 }
 
 func (c *Client) reconnect(err error) error {
 	if c.terminal {
-		c.exit(err)
+		err_exit := c.exit(err)
+		if err_exit != nil {
+			return err_exit
+		}
 		return err
 	}
 	if !c.parameters.AutoReconnect {
 		err := fmt.Errorf("AutoReconnect setting is disabled, do not reconnect: %s", err.Error())
-		c.exit(err)
+		err_exit := c.exit(err)
+		if err_exit != nil {
+			return err_exit
+		}
 		return err
 	}
-	for ; c.parameters.reconnectTry < c.parameters.ReconnectAttempts; c.parameters.reconnectTry++ {
+	reconnectTry := 0
+	for ; reconnectTry < c.parameters.ReconnectAttempts; reconnectTry++ {
 		log.Printf("waiting %s until reconnect...", c.parameters.ReconnectInterval)
 		time.Sleep(c.parameters.ReconnectInterval)
-		log.Printf("reconnect attempt %d/%d", c.parameters.reconnectTry+1, c.parameters.ReconnectAttempts)
+		log.Printf("reconnect attempt %d/%d", reconnectTry+1, c.parameters.ReconnectAttempts)
 		c.reset()
 		err = c.connect()
 		if err == nil {
 			log.Print("reconnect OK")
-			c.parameters.reconnectTry = 0
+			reconnectTry = 0
 			return nil
 		}
 		log.Printf("reconnect failed: %s", err.Error())
@@ -324,6 +366,7 @@ func (c *Client) listenUpstream() {
 		case msg := <-c.asynchronous.Listen():
 			if msg != nil {
 				// Errors here should be non critical so we just log them.
+				log.Printf("[DEBUG]: %s\n", msg)
 				err := c.handleMessage(msg)
 				if err != nil {
 					log.Printf("[WARN]: %s\n", err)
@@ -350,15 +393,13 @@ func (c *Client) closeAsyncAndWait(t time.Duration) {
 		return
 	}
 	timeout := make(chan bool)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	c.waitGroup.Add(1)
 	go func() {
 		select {
-		case <-c.asynchronous.Done(): // will this work?
-			wg.Done()
+		case <-c.asynchronous.Done():
+			c.waitGroup.Done()
 		case <-timeout:
-			log.Print("blocking async shutdown timed out")
-			wg.Done()
+			c.waitGroup.Done()
 		}
 	}()
 	c.asynchronous.Close()
@@ -366,7 +407,7 @@ func (c *Client) closeAsyncAndWait(t time.Duration) {
 		time.Sleep(t)
 		close(timeout)
 	}()
-	wg.Wait()
+	c.waitGroup.Wait()
 }
 
 // Listen provides an atomic interface for receiving API messages.
@@ -433,12 +474,16 @@ func (c *Client) checkResubscription() {
 }
 
 // called when an info event is received
-func (c *Client) handleOpen() {
+func (c *Client) handleOpen() (error) {
 	if c.hasCredentials() {
-		c.authenticate(context.Background())
+		err_auth := c.authenticate(context.Background())
+		if err_auth != nil {
+			return err_auth
+		}
 	} else {
 		c.checkResubscription()
 	}
+	return nil
 }
 
 // called when an auth event is received
@@ -473,12 +518,15 @@ func (c *Client) Unsubscribe(ctx context.Context, id string) error {
 // only subscribe to the filtered messages.
 func (c *Client) authenticate(ctx context.Context, filter ...string) error {
 	nonce := c.nonce.GetNonce()
-
 	payload := "AUTH" + nonce
+	sig, err := c.sign(payload)
+	if err != nil {
+		return err
+	}
 	s := &SubscriptionRequest{
 		Event:       "auth",
 		APIKey:      c.apiKey,
-		AuthSig:     c.sign(payload),
+		AuthSig:     sig,
 		AuthPayload: payload,
 		AuthNonce:   nonce,
 		Filter:      filter,

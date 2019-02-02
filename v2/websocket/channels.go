@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"context"
 
 	"github.com/igrmk/bitfinex-api-go/v2"
 )
@@ -36,6 +37,12 @@ func (c *Client) handleChannel(msg []byte) error {
 			case "hb":
 				// no-op, already updated heartbeat timeout from this event
 				return nil
+			case "cs":
+				if checksum, ok := raw[2].(float64); ok {
+					return c.handleChecksumChannel(chanID, int(checksum))
+				} else {
+					log.Fatal("Unable to parse checksum")
+				}
 			default:
 				body := raw[2].([]interface{})
 				return c.handlePublicChannel(chanID, sub.Request.Channel, data, body)
@@ -45,6 +52,42 @@ func (c *Client) handleChannel(msg []byte) error {
 		}
 	} else {
 		return c.handlePrivateChannel(raw)
+	}
+	return nil
+}
+
+func (c *Client) handleChecksumChannel(chanId int64, checksum int) error {
+	sub, err := c.subscriptions.lookupByChannelID(chanId)
+	if err != nil {
+		return err
+	}
+	symbol := sub.Request.Symbol
+	// force to signed integer
+	bChecksum := uint32(checksum)
+	if orderbook, ok := c.orderbooks[symbol]; ok {
+		oChecksum := orderbook.Checksum()
+		// compare bitfinex checksum with local checksum
+		if bChecksum == oChecksum {
+			log.Printf("Orderbook '%s' checksum verification successful.", symbol)
+		} else {
+			fmt.Printf("Orderbook '%s' checksum is invalid got %d bot got %d. Data Out of sync, reconnecting.",
+				symbol, bChecksum, oChecksum)
+			err := c.sendUnsubscribeMessage(context.Background(), chanId)
+			if err != nil {
+				return err
+			}
+			newSub := &SubscriptionRequest{
+				SubID:   c.nonce.GetNonce(), // generate new subID
+				Event:   sub.Request.Event,
+				Channel: sub.Request.Channel,
+				Symbol:  sub.Request.Symbol,
+			}
+			_, err_sub := c.Subscribe(context.Background(), newSub)
+			if err_sub != nil {
+				log.Printf("could not resubscribe: %s", err_sub.Error())
+				return err_sub
+			}
+		}
 	}
 	return nil
 }
@@ -394,7 +437,7 @@ func (c *Client) convertRaw(term string, raw []interface{}) interface{} {
 		}
 		flc := bitfinex.FundingLoanCancel(*o)
 		return &flc
-		//case "uac":
+	//case "uac":
 	case "hb":
 		return &bitfinex.Heartbeat{}
 	case "ats":

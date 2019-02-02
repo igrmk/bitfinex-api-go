@@ -103,6 +103,7 @@ func newSubscriptions(heartbeatTimeout time.Duration) *subscriptions {
 	return subs
 }
 
+// nolint
 type heartbeat struct {
 	ChanID int64
 	*time.Time
@@ -231,6 +232,7 @@ func (s *subscriptions) removeByChannelID(chanID int64) error {
 	return nil
 }
 
+// nolint:megacheck
 func (s *subscriptions) removeBySubscriptionID(subID string) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -251,7 +253,6 @@ func (s *subscriptions) activate(subID string, chanID int64) error {
 	defer s.lock.Unlock()
 	if sub, ok := s.subsBySubID[subID]; ok {
 		if chanID != 0 {
-			//log.Printf("%#v", sub.Request)
 			log.Printf("activated subscription %s %s for channel %d", sub.Request.Channel, sub.Request.Symbol, chanID)
 		}
 		sub.pending = false
