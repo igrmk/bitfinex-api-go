@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
-	"context"
 
-	"github.com/bitfinexcom/bitfinex-api-go/v2"
-	"github.com/bitfinexcom/bitfinex-api-go/v2/websocket"
+	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
+	"github.com/igrmk/bitfinex-api-go/v2/websocket"
 )
 
 func SubmitTestOrder(c *websocket.Client) {
@@ -16,7 +16,7 @@ func SubmitTestOrder(c *websocket.Client) {
 		Symbol: "tBTCUSD",
 		CID:    123,
 		Amount: 0.02,
-		Type: 	"EXCHANGE LIMIT",
+		Type:   "EXCHANGE LIMIT",
 		Price:  5000,
 	})
 	if err != nil {
@@ -27,7 +27,7 @@ func SubmitTestOrder(c *websocket.Client) {
 func UpdateTestOrder(orderId int64, c *websocket.Client) {
 	log.Printf("Updating order")
 	err := c.SubmitUpdateOrder(context.Background(), &bitfinex.OrderUpdateRequest{
-		ID: orderId,
+		ID:     orderId,
 		Amount: 0.04,
 	})
 	if err != nil {
