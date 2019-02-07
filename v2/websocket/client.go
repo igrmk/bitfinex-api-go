@@ -16,7 +16,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 
-	"github.com/igrmk/bitfinex-api-go/v2"
+	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 )
 
 var productionBaseURL = "wss://api.bitfinex.com/ws/2"
@@ -366,7 +366,7 @@ func (c *Client) listenUpstream() {
 		case msg := <-c.asynchronous.Listen():
 			if msg != nil {
 				// Errors here should be non critical so we just log them.
-				log.Printf("[DEBUG]: %s\n", msg)
+				// log.Printf("[DEBUG]: %s\n", msg)
 				err := c.handleMessage(msg)
 				if err != nil {
 					log.Printf("[WARN]: %s\n", err)

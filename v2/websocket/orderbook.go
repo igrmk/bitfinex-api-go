@@ -10,6 +10,11 @@ import (
 	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 )
 
+type Checksum struct {
+	Symbol string
+	Value  uint32
+}
+
 type Orderbook struct {
 	lock sync.Mutex
 
@@ -85,15 +90,15 @@ func (ob *Orderbook) Checksum() uint32 {
 	for i := 0; i < 25; i++ {
 		if len(ob.bids) > i {
 			// append bid
-			price := prepareNumber((ob.bids)[i].Price)
-			amount := prepareNumber((ob.bids)[i].Amount)
+			price := prepareNumber(ob.bids[i].Price)
+			amount := prepareNumber(ob.bids[i].Amount)
 			checksumItems = append(checksumItems, price)
 			checksumItems = append(checksumItems, amount)
 		}
 		if len(ob.asks) > i {
 			// append ask
-			price := prepareNumber((ob.asks)[i].Price)
-			amount := prepareNumber(-(ob.asks)[i].Amount)
+			price := prepareNumber(ob.asks[i].Price)
+			amount := prepareNumber(-ob.asks[i].Amount)
 			checksumItems = append(checksumItems, price)
 			checksumItems = append(checksumItems, amount)
 		}
@@ -103,7 +108,5 @@ func (ob *Orderbook) Checksum() uint32 {
 }
 
 func prepareNumber(x float64) string {
-	// convert scientific float notation to string
-	// i.e 1e-7 -> 0.0000001
 	return strconv.FormatFloat(x, 'f', -1, 64)
 }

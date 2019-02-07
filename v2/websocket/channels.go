@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/igrmk/bitfinex-api-go/v2"
+	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 )
 
 func (c *Client) handleChannel(msg []byte) error {
@@ -39,7 +39,7 @@ func (c *Client) handleChannel(msg []byte) error {
 				return nil
 			case "cs":
 				if checksum, ok := raw[2].(float64); ok {
-					return c.handleChecksumChannel(chanID, int(checksum))
+					return c.handleChecksumChannel(chanID, uint32(checksum))
 				} else {
 					log.Fatal("Unable to parse checksum")
 				}
@@ -56,22 +56,27 @@ func (c *Client) handleChannel(msg []byte) error {
 	return nil
 }
 
-func (c *Client) handleChecksumChannel(chanId int64, checksum int) error {
+func (c *Client) handleChecksumChannel(chanId int64, checksum uint32) error {
 	sub, err := c.subscriptions.lookupByChannelID(chanId)
 	if err != nil {
 		return err
 	}
 	symbol := sub.Request.Symbol
-	// force to signed integer
-	bChecksum := uint32(checksum)
+
+	c.listener <- &Checksum{Symbol: symbol, Value: checksum}
+
+	if !c.parameters.ManageOrderbook {
+		return nil
+	}
+
 	if orderbook, ok := c.orderbooks[symbol]; ok {
 		oChecksum := orderbook.Checksum()
 		// compare bitfinex checksum with local checksum
-		if bChecksum == oChecksum {
-			log.Printf("Orderbook '%s' checksum verification successful.", symbol)
+		if checksum == oChecksum {
+			//log.Printf("Orderbook '%s' checksum verification successful.", symbol)
 		} else {
-			fmt.Printf("Orderbook '%s' checksum is invalid got %d bot got %d. Data Out of sync, reconnecting.",
-				symbol, bChecksum, oChecksum)
+			// TODO: log
+			fmt.Printf("Orderbook '%s' checksum is invalid got %d bot got %d. Data Out of sync, reconnecting.\n", symbol, checksum, oChecksum)
 			err := c.sendUnsubscribeMessage(context.Background(), chanId)
 			if err != nil {
 				return err
