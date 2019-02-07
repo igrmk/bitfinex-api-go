@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/igrmk/bitfinex-api-go/v2/rest"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/igrmk/bitfinex-api-go/v2/rest"
 	"log"
 	"os"
 )

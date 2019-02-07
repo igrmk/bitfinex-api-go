@@ -9,7 +9,7 @@ import (
 
 type FlagRequest struct {
 	Event string `json:"event"`
-	Flags int `json:"flags"`
+	Flags int    `json:"flags"`
 }
 
 // API for end-users to interact with Bitfinex.

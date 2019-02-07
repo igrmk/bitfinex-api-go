@@ -548,9 +548,9 @@ func TestUpdateOrder(t *testing.T) {
 
 	// publish update request
 	req := &bitfinex.OrderUpdateRequest{
-		ID: on.ID,
+		ID:     on.ID,
 		Amount: 0.04,
-		Price: 1200,
+		Price:  1200,
 	}
 	pre := async.SentCount()
 	err = ws.SubmitUpdateOrder(context.Background(), req)
@@ -573,5 +573,5 @@ func TestUpdateOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert(t, &bitfinex.OrderUpdate{ID:1234567, GID:0, CID:123, Symbol:"tBTCUSD", MTSCreated:1547469854025, MTSUpdated:1547469854121, Amount:0.04, AmountOrig:0.04, Type:"LIMIT", TypePrev:"", Flags:0, Status:"ACTIVE", Price:1200, PriceAvg:0, PriceTrailing:0, PriceAuxLimit:0, Notify:false, Hidden:false, PlacedID:0}, ou)
+	assert(t, &bitfinex.OrderUpdate{ID: 1234567, GID: 0, CID: 123, Symbol: "tBTCUSD", MTSCreated: 1547469854025, MTSUpdated: 1547469854121, Amount: 0.04, AmountOrig: 0.04, Type: "LIMIT", TypePrev: "", Flags: 0, Status: "ACTIVE", Price: 1200, PriceAvg: 0, PriceTrailing: 0, PriceAuxLimit: 0, Notify: false, Hidden: false, PlacedID: 0}, ou)
 }

@@ -1,10 +1,10 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"context"
 
 	"github.com/igrmk/bitfinex-api-go/v2"
 )

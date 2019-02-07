@@ -45,15 +45,15 @@ type Capabilities struct {
 
 // error codes pulled from v2 docs & API usage
 const (
-	ErrorCodeUnknownEvent           int = 10000
-	ErrorCodeUnknownPair            int = 10001
-	ErrorCodeUnknownBookPrecision   int = 10011
-	ErrorCodeUnknownBookLength      int = 10012
-	ErrorCodeSubscriptionFailed     int = 10300
-	ErrorCodeAlreadySubscribed      int = 10301
-	ErrorCodeUnknownChannel         int = 10302
-	ErrorCodeUnsubscribeFailed      int = 10400
-	ErrorCodeNotSubscribed          int = 10401
+	ErrorCodeUnknownEvent         int = 10000
+	ErrorCodeUnknownPair          int = 10001
+	ErrorCodeUnknownBookPrecision int = 10011
+	ErrorCodeUnknownBookLength    int = 10012
+	ErrorCodeSubscriptionFailed   int = 10300
+	ErrorCodeAlreadySubscribed    int = 10301
+	ErrorCodeUnknownChannel       int = 10302
+	ErrorCodeUnsubscribeFailed    int = 10400
+	ErrorCodeNotSubscribed        int = 10401
 )
 
 type ErrorEvent struct {

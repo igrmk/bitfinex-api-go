@@ -69,16 +69,16 @@ func (f *TradeFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}
 
 type BookFactory struct {
 	*subscriptions
-	orderbooks     map[string]*Orderbook
-	manageBooks    bool
-	lock           sync.Mutex
+	orderbooks  map[string]*Orderbook
+	manageBooks bool
+	lock        sync.Mutex
 }
 
 func newBookFactory(subs *subscriptions, obs map[string]*Orderbook, manageBooks bool) *BookFactory {
 	return &BookFactory{
 		subscriptions: subs,
-		orderbooks: obs,
-		manageBooks: manageBooks,
+		orderbooks:    obs,
+		manageBooks:   manageBooks,
 	}
 }
 
@@ -95,7 +95,6 @@ func (f *BookFactory) Build(chanID int64, objType string, raw []interface{}) (in
 	}
 	return nil, err
 }
-
 
 func (f *BookFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error) {
 	sub, err := f.subscriptions.lookupByChannelID(chanID)

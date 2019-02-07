@@ -91,11 +91,11 @@ const (
 // Settings flags
 
 const (
-	Dec_s int = 9
-  Time_s int = 32
-  Timestamp int = 32768
-  Seq_all int = 65536
-  Checksum int = 131072
+	Dec_s     int = 9
+	Time_s    int = 32
+	Timestamp int = 32768
+	Seq_all   int = 65536
+	Checksum  int = 131072
 )
 
 type orderSide byte
@@ -135,10 +135,10 @@ type bookFrequency string
 type BookFrequency bookFrequency
 
 const (
-	OrderFlagHidden     int = 64
-	OrderFlagClose      int = 512
-	OrderFlagPostOnly   int = 4096
-	OrderFlagOCO        int = 16384
+	OrderFlagHidden   int = 64
+	OrderFlagClose    int = 512
+	OrderFlagPostOnly int = 4096
+	OrderFlagOCO      int = 16384
 )
 
 // OrderNewRequest represents an order to be posted to the bitfinex websocket
@@ -208,7 +208,7 @@ func (o *OrderNewRequest) MarshalJSON() ([]byte, error) {
 }
 
 type OrderUpdateRequest struct {
-	ID           	int64   `json:"id"`
+	ID            int64   `json:"id"`
 	GID           int64   `json:"gid,omitempty"`
 	Price         float64 `json:"price,string,omitempty"`
 	Amount        float64 `json:"amount,string,omitempty"`
@@ -223,7 +223,7 @@ type OrderUpdateRequest struct {
 // websocket service.
 func (o *OrderUpdateRequest) MarshalJSON() ([]byte, error) {
 	aux := struct {
-		ID           	int64   `json:"id"`
+		ID            int64   `json:"id"`
 		GID           int64   `json:"gid,omitempty"`
 		Price         float64 `json:"price,string,omitempty"`
 		Amount        float64 `json:"amount,string,omitempty"`
