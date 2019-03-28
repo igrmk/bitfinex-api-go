@@ -8,16 +8,19 @@ import (
 
 	bitfinex "github.com/igrmk/bitfinex-api-go/v2"
 	"github.com/igrmk/bitfinex-api-go/v2/websocket"
+	"github.com/igrmk/decimal"
 )
+
+var d = decimal.RequireFromString
 
 func SubmitTestOrder(c *websocket.Client) {
 	log.Printf("Submitting new order")
 	err := c.SubmitOrder(context.Background(), &bitfinex.OrderNewRequest{
 		Symbol: "tBTCUSD",
 		CID:    123,
-		Amount: 0.02,
+		Amount: d("0.02"),
 		Type:   "EXCHANGE LIMIT",
-		Price:  5000,
+		Price:  d("5000"),
 	})
 	if err != nil {
 		log.Fatal(err)

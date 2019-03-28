@@ -1,41 +1,39 @@
 package bitfinex
 
 import (
+	"encoding/json"
 	"fmt"
+
+	"github.com/igrmk/decimal"
 )
 
-func F64Slice(in []interface{}) ([]float64, error) {
-	var ret []float64
+func JsonNumberSlice(in []interface{}) ([]json.Number, error) {
+	var ret []json.Number
 	for _, e := range in {
-		if item, ok := e.(float64); ok {
+		if item, ok := e.(json.Number); ok {
 			ret = append(ret, item)
 		} else {
-			return nil, fmt.Errorf("expected slice of float64 but got: %v", in)
+			return nil, fmt.Errorf("expected slice of numbers but got: %v", in)
 		}
 	}
 
 	return ret, nil
 }
 
-func i64ValOrZero(i interface{}) int64 {
-	if r, ok := i.(float64); ok {
-		return int64(r)
+func DecValOrZero(i interface{}) decimal.Decimal {
+	if num, ok := i.(json.Number); ok {
+		return decimal.RequireFromString(num.String())
 	}
-	return 0
+	return decimal.Zero
 }
 
-func iValOrZero(i interface{}) int {
-	if r, ok := i.(float64); ok {
-		return int(r)
+func Int64ValOrZero(i interface{}) int64 {
+	if num, ok := i.(json.Number); ok {
+		if parsed, err := num.Int64(); err == nil {
+			return parsed
+		}
 	}
 	return 0
-}
-
-func f64ValOrZero(i interface{}) float64 {
-	if r, ok := i.(float64); ok {
-		return r
-	}
-	return 0.0
 }
 
 func bValOrFalse(i interface{}) bool {
@@ -45,7 +43,7 @@ func bValOrFalse(i interface{}) bool {
 	return false
 }
 
-func sValOrEmpty(i interface{}) string {
+func strValOrEmpty(i interface{}) string {
 	if r, ok := i.(string); ok {
 		return r
 	}

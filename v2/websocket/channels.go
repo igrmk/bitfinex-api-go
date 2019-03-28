@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,19 +12,26 @@ import (
 
 func (c *Client) handleChannel(msg []byte) error {
 	var raw []interface{}
-	err := json.Unmarshal(msg, &raw)
+
+	d := json.NewDecoder(bytes.NewReader(msg))
+	d.UseNumber()
+	err := d.Decode(&raw)
 	if err != nil {
 		return err
 	} else if len(raw) < 2 {
 		return nil
 	}
 
-	chID, ok := raw[0].(float64)
+	chID, ok := raw[0].(json.Number)
 	if !ok {
 		return fmt.Errorf("expected message to start with a channel id but got %#v instead", raw[0])
 	}
 
-	chanID := int64(chID)
+	chanID, err := chID.Int64()
+	if err != nil {
+		return fmt.Errorf("expected message to start with a channel id but got %#v instead", raw[0])
+	}
+
 	sub, err := c.subscriptions.lookupByChannelID(chanID)
 	if err != nil {
 		// no subscribed channel for message
@@ -38,8 +46,12 @@ func (c *Client) handleChannel(msg []byte) error {
 				// no-op, already updated heartbeat timeout from this event
 				return nil
 			case "cs":
-				if checksum, ok := raw[2].(float64); ok {
-					return c.handleChecksumChannel(chanID, uint32(checksum))
+				if checksumRaw, ok := raw[2].(json.Number); ok {
+					if checksum, err := checksumRaw.Int64(); err == nil {
+						return c.handleChecksumChannel(chanID, uint32(int(checksum)))
+					} else {
+						log.Fatal("Unable to parse checksum")
+					}
 				} else {
 					log.Fatal("Unable to parse checksum")
 				}
@@ -97,20 +109,19 @@ func (c *Client) handleChecksumChannel(chanId int64, checksum uint32) error {
 	return nil
 }
 
-func (c *Client) handlePublicChannel(chanID int64, channel, objType string, data []interface{}) error {
+func (c *Client) handlePublicChannel(chanID int64, channel, objType string, rawArray []interface{}) error {
 	// unauthenticated data slice
 	// returns interface{} (which is really [][]float64)
-	obj, err := c.processDataSlice(data)
+	nums, err := c.processDataSlice(rawArray)
 	if err != nil {
 		return err
 	}
 	// public data is returned as raw interface arrays, use a factory to convert to raw type & publish
 	if factory, ok := c.factories[channel]; ok {
-		flt := obj.([][]float64)
-		if len(flt) == 1 {
+		if len(nums) == 1 {
 			// single item
-			arr := make([]interface{}, len(flt[0]))
-			for i, ft := range flt[0] {
+			arr := make([]interface{}, len(nums[0]))
+			for i, ft := range nums[0] {
 				arr[i] = ft
 			}
 			msg, err := factory.Build(chanID, objType, arr)
@@ -118,10 +129,11 @@ func (c *Client) handlePublicChannel(chanID int64, channel, objType string, data
 				return err
 			}
 			if msg != nil {
+				//fmt.Printf("GOTTTTA!!!!!!!!!!!!!!! %v\n", obj)
 				c.listener <- msg
 			}
-		} else if len(flt) > 1 {
-			msg, err := factory.BuildSnapshot(chanID, flt)
+		} else if len(nums) > 1 {
+			msg, err := factory.BuildSnapshot(chanID, nums)
 			if err != nil {
 				return err
 			}
@@ -139,24 +151,29 @@ func (c *Client) handlePublicChannel(chanID int64, channel, objType string, data
 func (c *Client) handlePrivateChannel(raw []interface{}) error {
 	// authenticated data slice, or a heartbeat
 	if raw[1].(string) == "hb" {
-		chanID, ok := raw[0].(float64)
+		chanID, ok := raw[0].(json.Number)
 		if !ok {
 			log.Printf("could not find chanID: %#v", raw)
 			return nil
 		}
-		c.handleHeartbeat(int64(chanID))
+		i, err := chanID.Int64()
+		if err != nil {
+			log.Printf("could not find chanID: %#v", raw)
+			return nil
+		}
+		c.handleHeartbeat(i)
 	} else {
 		// raw[2] is data slice
 		// authenticated snapshots?
 		if len(raw) > 2 {
 			if arr, ok := raw[2].([]interface{}); ok {
-				obj, err := c.handlePrivateDataMessage(raw[1].(string), arr)
+				msg, err := c.handlePrivateDataMessage(raw[1].(string), arr)
 				if err != nil {
 					return err
 				}
 				// private data is returned as strongly typed data, publish directly
-				if obj != nil {
-					c.listener <- obj
+				if msg != nil {
+					c.listener <- msg
 				}
 			}
 		}
@@ -173,17 +190,17 @@ type unsubscribeMsg struct {
 	ChanID int64  `json:"chanId"`
 }
 
-func (c *Client) processDataSlice(data []interface{}) (interface{}, error) {
+func (c *Client) processDataSlice(data []interface{}) ([][]json.Number, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("unexpected data slice: %v", data)
 	}
 
-	var items [][]float64
+	var items [][]json.Number
 	switch data[0].(type) {
-	case []interface{}: // [][]float64
+	case []interface{}:
 		for _, e := range data {
 			if s, ok := e.([]interface{}); ok {
-				item, err := bitfinex.F64Slice(s)
+				item, err := bitfinex.JsonNumberSlice(s)
 				if err != nil {
 					return nil, err
 				}
@@ -192,8 +209,8 @@ func (c *Client) processDataSlice(data []interface{}) (interface{}, error) {
 				return nil, fmt.Errorf("expected slice of float64 slices but got: %v", data)
 			}
 		}
-	case float64: // []float64
-		item, err := bitfinex.F64Slice(data)
+	case json.Number:
+		item, err := bitfinex.JsonNumberSlice(data)
 		if err != nil {
 			return nil, err
 		}
@@ -209,8 +226,8 @@ func (c *Client) processDataSlice(data []interface{}) (interface{}, error) {
 // hb (both): [ChanID, "hb"]
 // private update msg: [ChanID, "type", [Data]]
 // private snapshot msg: [ChanID, "type", [[Data]]]
-func (c *Client) handlePrivateDataMessage(term string, data []interface{}) (ms interface{}, err error) {
-	if len(data) == 0 {
+func (c *Client) handlePrivateDataMessage(term string, raw []interface{}) (ms interface{}, err error) {
+	if len(raw) == 0 {
 		// empty data msg
 		return nil, nil
 	}
@@ -225,7 +242,7 @@ func (c *Client) handlePrivateDataMessage(term string, data []interface{}) (ms i
 			return ms, fmt.Errorf("expected data list in third position but got %#v in %#v", data[2], data)
 		}
 	*/
-	ms = c.convertRaw(term, data)
+	ms = c.convertRaw(term, raw)
 
 	return
 }

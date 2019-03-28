@@ -72,7 +72,9 @@ func (h HttpTransport) do(req *http.Request, v interface{}) (*Response, error) {
 	}
 
 	if v != nil {
-		err = json.Unmarshal(response.Body, v)
+		d := json.NewDecoder(bytes.NewReader(response.Body))
+		d.UseNumber()
+		err := d.Decode(v)
 		if err != nil {
 			return response, err
 		}

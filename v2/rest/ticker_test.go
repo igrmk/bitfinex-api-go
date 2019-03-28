@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"github.com/igrmk/decimal"
 )
 
 func TestTickerAll(t *testing.T) {
@@ -31,8 +33,8 @@ func TestTickerAll(t *testing.T) {
 		t.Fatalf("expected symbol2 symbol, but got %s", ticker.Snapshot[1].Symbol)
 	}
 
-	if ticker.Snapshot[1].Low != 0.5 {
-		t.Fatalf("expected low equal to 0.5, but got %f", ticker.Snapshot[1].Low)
+	if ticker.Snapshot[1].Low.Cmp(decimal.RequireFromString("0.5")) != 0 {
+		t.Fatalf("expected low equal to 0.5, but got %v", ticker.Snapshot[1].Low)
 	}
 	if ticker.Snapshot[0].BidPeriod != 4 {
 		t.Fatalf("expected bit period equal to 4, but got %d", ticker.Snapshot[0].BidPeriod)

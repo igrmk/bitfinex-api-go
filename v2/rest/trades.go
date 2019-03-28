@@ -1,8 +1,10 @@
 package rest
 
 import (
-	"github.com/igrmk/bitfinex-api-go/v2"
+	"encoding/json"
 	"path"
+
+	"github.com/igrmk/bitfinex-api-go/v2"
 )
 
 // TradeService manages the Trade endpoint.
@@ -23,9 +25,9 @@ func (s *TradeService) All(symbol string) (*bitfinex.TradeSnapshot, error) {
 		return nil, err
 	}
 
-	dat := make([][]float64, 0)
+	dat := make([][]json.Number, 0)
 	for _, r := range raw {
-		if f, ok := r.([]float64); ok {
+		if f, ok := r.([]json.Number); ok {
 			dat = append(dat, f)
 		}
 	}

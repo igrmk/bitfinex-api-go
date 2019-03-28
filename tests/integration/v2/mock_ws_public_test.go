@@ -64,16 +64,16 @@ func TestTicker(t *testing.T) {
 	}
 	assert(t, &bitfinex.Ticker{
 		Symbol:          "tBTCUSD",
-		Bid:             14957,
-		Ask:             14958,
-		BidSize:         68.17328796,
-		AskSize:         55.29588132,
-		DailyChange:     -659,
-		DailyChangePerc: -0.0422,
-		LastPrice:       14971,
-		Volume:          53723.08813995,
-		High:            16494,
-		Low:             14454,
+		Bid:             d("14957"),
+		Ask:             d("14958"),
+		BidSize:         d("68.17328796"),
+		AskSize:         d("55.29588132"),
+		DailyChange:     d("-659"),
+		DailyChangePerc: d("-0.0422"),
+		LastPrice:       d("14971"),
+		Volume:          d("53723.08813995"),
+		High:            d("16494"),
+		Low:             d("14454"),
 	}, tick)
 
 	// unsubscribe

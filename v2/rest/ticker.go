@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -12,6 +13,9 @@ import (
 type TickerService struct {
 	Synchronous
 }
+
+var decValOrZero = bitfinex.DecValOrZero
+var int64ValOrZero = bitfinex.Int64ValOrZero
 
 func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 	req := NewRequestWithMethod("tickers", "GET")
@@ -39,15 +43,15 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		if (symbol[0] == 't' && len(arr) < 11) || (symbol[0] == 'f' && len(arr) < 14) {
 			return nil, errors.New("invalid length of ticker")
 		}
-		sub := make([]float64, len(arr)-1)
+		sub := make([]json.Number, len(arr)-1)
 		for j, iface := range arr[1:] {
 			if iface == nil {
-				sub[j] = 0
+				sub[j] = "0"
 				continue
 			}
-			flt, ok := iface.(float64)
+			flt, ok := iface.(json.Number)
 			if !ok {
-				return nil, fmt.Errorf("expecting float64, got %T", iface)
+				return nil, fmt.Errorf("expecting a number, got %T", iface)
 			}
 			sub[j] = flt
 		}
@@ -56,33 +60,33 @@ func (t *TickerService) All() (*bitfinex.TickerSnapshot, error) {
 		case 't':
 			entry = &bitfinex.Ticker{
 				Symbol:          strings.ToLower(symbol[1:]),
-				Bid:             sub[0],
-				BidSize:         sub[1],
-				Ask:             sub[2],
-				AskSize:         sub[3],
-				DailyChange:     sub[4],
-				DailyChangePerc: sub[5],
-				LastPrice:       sub[6],
-				Volume:          sub[7],
-				High:            sub[8],
-				Low:             sub[9],
+				Bid:             decValOrZero(sub[0]),
+				BidSize:         decValOrZero(sub[1]),
+				Ask:             decValOrZero(sub[2]),
+				AskSize:         decValOrZero(sub[3]),
+				DailyChange:     decValOrZero(sub[4]),
+				DailyChangePerc: decValOrZero(sub[5]),
+				LastPrice:       decValOrZero(sub[6]),
+				Volume:          decValOrZero(sub[7]),
+				High:            decValOrZero(sub[8]),
+				Low:             decValOrZero(sub[9]),
 			}
 		case 'f':
 			entry = &bitfinex.Ticker{
 				Symbol:          strings.ToLower(symbol[1:]),
-				FRR:             sub[0],
-				Bid:             sub[1],
-				BidSize:         sub[2],
-				BidPeriod:       int64(sub[3]),
-				Ask:             sub[4],
-				AskSize:         sub[5],
-				AskPeriod:       int64(sub[6]),
-				DailyChange:     sub[7],
-				DailyChangePerc: sub[8],
-				LastPrice:       sub[9],
-				Volume:          sub[10],
-				High:            sub[11],
-				Low:             sub[12],
+				FRR:             decValOrZero(sub[0]),
+				Bid:             decValOrZero(sub[1]),
+				BidSize:         decValOrZero(sub[2]),
+				BidPeriod:       int64ValOrZero(sub[3]),
+				Ask:             decValOrZero(sub[4]),
+				AskSize:         decValOrZero(sub[5]),
+				AskPeriod:       int64ValOrZero(sub[6]),
+				DailyChange:     decValOrZero(sub[7]),
+				DailyChangePerc: decValOrZero(sub[8]),
+				LastPrice:       decValOrZero(sub[9]),
+				Volume:          decValOrZero(sub[10]),
+				High:            decValOrZero(sub[11]),
+				Low:             decValOrZero(sub[12]),
 			}
 		}
 		tickers[i] = entry

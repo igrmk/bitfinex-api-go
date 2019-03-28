@@ -1,11 +1,13 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/igrmk/bitfinex-api-go/v2"
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/igrmk/bitfinex-api-go/v2"
 )
 
 // CandleService manages the Candles endpoint.
@@ -54,12 +56,12 @@ func (c *CandleService) History(symbol string, resolution bitfinex.CandleResolut
 		return nil, err
 	}
 
-	data := make([][]float64, 0, len(raw))
+	data := make([][]json.Number, 0, len(raw))
 	for _, ifacearr := range raw {
 		if arr, ok := ifacearr.([]interface{}); ok {
-			sub := make([]float64, 0, len(arr))
+			sub := make([]json.Number, 0, len(arr))
 			for _, iface := range arr {
-				if flt, ok := iface.(float64); ok {
+				if flt, ok := iface.(json.Number); ok {
 					sub = append(sub, flt)
 				}
 			}
@@ -108,12 +110,12 @@ func (c *CandleService) HistoryWithQuery(
 		return nil, err
 	}
 
-	data := make([][]float64, 0, len(raw))
+	data := make([][]json.Number, 0, len(raw))
 	for _, ifacearr := range raw {
 		if arr, ok := ifacearr.([]interface{}); ok {
-			sub := make([]float64, 0, len(arr))
+			sub := make([]json.Number, 0, len(arr))
 			for _, iface := range arr {
-				if flt, ok := iface.(float64); ok {
+				if flt, ok := iface.(json.Number); ok {
 					sub = append(sub, flt)
 				}
 			}

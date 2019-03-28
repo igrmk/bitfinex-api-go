@@ -1,16 +1,18 @@
 package rest
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/igrmk/bitfinex-api-go/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/igrmk/bitfinex-api-go/utils"
 )
 
 var productionBaseURL = "https://api.bitfinex.com/v2/"
@@ -210,7 +212,11 @@ func checkResponse(r *Response) error {
 	var raw []interface{}
 	// Try to decode error message
 	errorResponse := &ErrorResponse{Response: r}
-	err := json.Unmarshal(r.Body, &raw)
+
+	d := json.NewDecoder(bytes.NewReader(r.Body))
+	d.UseNumber()
+	err := d.Decode(&raw)
+
 	if err != nil {
 		errorResponse.Message = "Error decoding response error message. " +
 			"Please see response body for more information."
@@ -227,12 +233,18 @@ func checkResponse(r *Response) error {
 		return errorResponse
 	}
 
-	code, ok := raw[1].(float64)
+	code, ok := raw[1].(json.Number)
 	if !ok {
 		errorResponse.Message = fmt.Sprintf("Expected second element to be error code but got %#v", raw)
 		return errorResponse
 	}
-	errorResponse.Code = int(code)
+
+	intCode, err := code.Int64()
+	if err != nil {
+		errorResponse.Message = fmt.Sprintf("Expected second element to be integer error code but got %#v", raw)
+		return errorResponse
+	}
+	errorResponse.Code = int(intCode)
 
 	msg, ok := raw[2].(string)
 	if !ok {

@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
+
+	"github.com/igrmk/decimal"
 )
 
 // Prefixes for available pairs
@@ -144,37 +145,37 @@ const (
 // OrderNewRequest represents an order to be posted to the bitfinex websocket
 // service.
 type OrderNewRequest struct {
-	GID           int64   `json:"gid"`
-	CID           int64   `json:"cid"`
-	Type          string  `json:"type"`
-	Symbol        string  `json:"symbol"`
-	Amount        float64 `json:"amount,string"`
-	Price         float64 `json:"price,string"`
-	PriceTrailing float64 `json:"price_trailing,string,omitempty"`
-	PriceAuxLimit float64 `json:"price_aux_limit,string,omitempty"`
-	PriceOcoStop  float64 `json:"price_oco_stop,string,omitempty"`
-	Hidden        bool    `json:"hidden,omitempty"`
-	PostOnly      bool    `json:"postonly,omitempty"`
-	Close         bool    `json:"close,omitempty"`
-	OcoOrder      bool    `json:"oco_order,omitempty"`
-	TimeInForce   string  `json:"tif,omitempty"`
+	GID           int64           `json:"gid"`
+	CID           int64           `json:"cid"`
+	Type          string          `json:"type"`
+	Symbol        string          `json:"symbol"`
+	Amount        decimal.Decimal `json:"amount,string"`
+	Price         decimal.Decimal `json:"price,string"`
+	PriceTrailing decimal.Decimal `json:"price_trailing,string,omitempty"`
+	PriceAuxLimit decimal.Decimal `json:"price_aux_limit,string,omitempty"`
+	PriceOcoStop  decimal.Decimal `json:"price_oco_stop,string,omitempty"`
+	Hidden        bool            `json:"hidden,omitempty"`
+	PostOnly      bool            `json:"postonly,omitempty"`
+	Close         bool            `json:"close,omitempty"`
+	OcoOrder      bool            `json:"oco_order,omitempty"`
+	TimeInForce   string          `json:"tif,omitempty"`
 }
 
 // MarshalJSON converts the order object into the format required by the bitfinex
 // websocket service.
 func (o *OrderNewRequest) MarshalJSON() ([]byte, error) {
 	aux := struct {
-		GID           int64   `json:"gid"`
-		CID           int64   `json:"cid"`
-		Type          string  `json:"type"`
-		Symbol        string  `json:"symbol"`
-		Amount        float64 `json:"amount,string"`
-		Price         float64 `json:"price,string"`
-		PriceTrailing float64 `json:"price_trailing,string,omitempty"`
-		PriceAuxLimit float64 `json:"price_aux_limit,string,omitempty"`
-		PriceOcoStop  float64 `json:"price_oco_stop,string,omitempty"`
-		TimeInForce   string  `json:"tif,omitempty"`
-		Flags         int     `json:"flags,omitempty"`
+		GID           int64           `json:"gid"`
+		CID           int64           `json:"cid"`
+		Type          string          `json:"type"`
+		Symbol        string          `json:"symbol"`
+		Amount        decimal.Decimal `json:"amount,string"`
+		Price         decimal.Decimal `json:"price,string"`
+		PriceTrailing decimal.Decimal `json:"price_trailing,string,omitempty"`
+		PriceAuxLimit decimal.Decimal `json:"price_aux_limit,string,omitempty"`
+		PriceOcoStop  decimal.Decimal `json:"price_oco_stop,string,omitempty"`
+		TimeInForce   string          `json:"tif,omitempty"`
+		Flags         int             `json:"flags,omitempty"`
 	}{
 		GID:           o.GID,
 		CID:           o.CID,
@@ -324,16 +325,16 @@ type Order struct {
 	Symbol        string
 	MTSCreated    int64
 	MTSUpdated    int64
-	Amount        float64
-	AmountOrig    float64
+	Amount        decimal.Decimal
+	AmountOrig    decimal.Decimal
 	Type          string
 	TypePrev      string
 	Flags         int64
 	Status        OrderStatus
-	Price         float64
-	PriceAvg      float64
-	PriceTrailing float64
-	PriceAuxLimit float64
+	Price         decimal.Decimal
+	PriceAvg      decimal.Decimal
+	PriceTrailing decimal.Decimal
+	PriceAuxLimit decimal.Decimal
 	Notify        bool
 	Hidden        bool
 	PlacedID      int64
@@ -344,15 +345,15 @@ type Order struct {
 func NewOrderFromRaw(raw []interface{}) (o *Order, err error) {
 	if len(raw) == 12 {
 		o = &Order{
-			ID:         int64(f64ValOrZero(raw[0])),
-			Symbol:     sValOrEmpty(raw[1]),
-			Amount:     f64ValOrZero(raw[2]),
-			AmountOrig: f64ValOrZero(raw[3]),
-			Type:       sValOrEmpty(raw[4]),
-			Status:     OrderStatus(sValOrEmpty(raw[5])),
-			Price:      f64ValOrZero(raw[6]),
-			PriceAvg:   f64ValOrZero(raw[7]),
-			MTSUpdated: i64ValOrZero(raw[8]),
+			ID:         Int64ValOrZero(raw[0]),
+			Symbol:     strValOrEmpty(raw[1]),
+			Amount:     DecValOrZero(raw[2]),
+			AmountOrig: DecValOrZero(raw[3]),
+			Type:       strValOrEmpty(raw[4]),
+			Status:     OrderStatus(strValOrEmpty(raw[5])),
+			Price:      DecValOrZero(raw[6]),
+			PriceAvg:   DecValOrZero(raw[7]),
+			MTSUpdated: Int64ValOrZero(raw[8]),
 			// 3 trailing zeroes, what do they map to?
 		}
 	} else if len(raw) < 26 {
@@ -360,25 +361,25 @@ func NewOrderFromRaw(raw []interface{}) (o *Order, err error) {
 	} else {
 		// TODO: API docs say ID, GID, CID, MTS_CREATE, MTS_UPDATE are int but API returns float
 		o = &Order{
-			ID:            int64(f64ValOrZero(raw[0])),
-			GID:           int64(f64ValOrZero(raw[1])),
-			CID:           int64(f64ValOrZero(raw[2])),
-			Symbol:        sValOrEmpty(raw[3]),
-			MTSCreated:    int64(f64ValOrZero(raw[4])),
-			MTSUpdated:    int64(f64ValOrZero(raw[5])),
-			Amount:        f64ValOrZero(raw[6]),
-			AmountOrig:    f64ValOrZero(raw[7]),
-			Type:          sValOrEmpty(raw[8]),
-			TypePrev:      sValOrEmpty(raw[9]),
-			Flags:         i64ValOrZero(raw[12]),
-			Status:        OrderStatus(sValOrEmpty(raw[13])),
-			Price:         f64ValOrZero(raw[16]),
-			PriceAvg:      f64ValOrZero(raw[17]),
-			PriceTrailing: f64ValOrZero(raw[18]),
-			PriceAuxLimit: f64ValOrZero(raw[19]),
+			ID:            Int64ValOrZero(raw[0]),
+			GID:           Int64ValOrZero(raw[1]),
+			CID:           Int64ValOrZero(raw[2]),
+			Symbol:        strValOrEmpty(raw[3]),
+			MTSCreated:    Int64ValOrZero(raw[4]),
+			MTSUpdated:    Int64ValOrZero(raw[5]),
+			Amount:        DecValOrZero(raw[6]),
+			AmountOrig:    DecValOrZero(raw[7]),
+			Type:          strValOrEmpty(raw[8]),
+			TypePrev:      strValOrEmpty(raw[9]),
+			Flags:         Int64ValOrZero(raw[12]),
+			Status:        OrderStatus(strValOrEmpty(raw[13])),
+			Price:         DecValOrZero(raw[16]),
+			PriceAvg:      DecValOrZero(raw[17]),
+			PriceTrailing: DecValOrZero(raw[18]),
+			PriceAuxLimit: DecValOrZero(raw[19]),
 			Notify:        bValOrFalse(raw[23]),
 			Hidden:        bValOrFalse(raw[24]),
-			PlacedID:      i64ValOrZero(raw[25]),
+			PlacedID:      Int64ValOrZero(raw[25]),
 		}
 	}
 
@@ -438,40 +439,40 @@ const (
 type Position struct {
 	Symbol               string
 	Status               PositionStatus
-	Amount               float64
-	BasePrice            float64
-	MarginFunding        float64
+	Amount               decimal.Decimal
+	BasePrice            decimal.Decimal
+	MarginFunding        decimal.Decimal
 	MarginFundingType    int64
-	ProfitLoss           float64
-	ProfitLossPercentage float64
-	LiquidationPrice     float64
-	Leverage             float64
+	ProfitLoss           decimal.Decimal
+	ProfitLossPercentage decimal.Decimal
+	LiquidationPrice     decimal.Decimal
+	Leverage             decimal.Decimal
 }
 
 func NewPositionFromRaw(raw []interface{}) (o *Position, err error) {
 	if len(raw) == 6 {
 		o = &Position{
-			Symbol:            sValOrEmpty(raw[0]),
-			Status:            PositionStatus(sValOrEmpty(raw[1])),
-			Amount:            f64ValOrZero(raw[2]),
-			BasePrice:         f64ValOrZero(raw[3]),
-			MarginFunding:     f64ValOrZero(raw[4]),
-			MarginFundingType: i64ValOrZero(raw[5]),
+			Symbol:            strValOrEmpty(raw[0]),
+			Status:            PositionStatus(strValOrEmpty(raw[1])),
+			Amount:            DecValOrZero(raw[2]),
+			BasePrice:         DecValOrZero(raw[3]),
+			MarginFunding:     DecValOrZero(raw[4]),
+			MarginFundingType: Int64ValOrZero(raw[5]),
 		}
 	} else if len(raw) < 10 {
 		return o, fmt.Errorf("data slice too short for position: %#v", raw)
 	} else {
 		o = &Position{
-			Symbol:               sValOrEmpty(raw[0]),
-			Status:               PositionStatus(sValOrEmpty(raw[1])),
-			Amount:               f64ValOrZero(raw[2]),
-			BasePrice:            f64ValOrZero(raw[3]),
-			MarginFunding:        f64ValOrZero(raw[4]),
-			MarginFundingType:    i64ValOrZero(raw[5]),
-			ProfitLoss:           f64ValOrZero(raw[6]),
-			ProfitLossPercentage: f64ValOrZero(raw[7]),
-			LiquidationPrice:     f64ValOrZero(raw[8]),
-			Leverage:             f64ValOrZero(raw[9]),
+			Symbol:               strValOrEmpty(raw[0]),
+			Status:               PositionStatus(strValOrEmpty(raw[1])),
+			Amount:               DecValOrZero(raw[2]),
+			BasePrice:            DecValOrZero(raw[3]),
+			MarginFunding:        DecValOrZero(raw[4]),
+			MarginFundingType:    Int64ValOrZero(raw[5]),
+			ProfitLoss:           DecValOrZero(raw[6]),
+			ProfitLossPercentage: DecValOrZero(raw[7]),
+			LiquidationPrice:     DecValOrZero(raw[8]),
+			Leverage:             DecValOrZero(raw[9]),
 		}
 	}
 	return
@@ -514,8 +515,8 @@ type Trade struct {
 	Pair   string
 	ID     int64
 	MTS    int64
-	Amount float64
-	Price  float64
+	Amount decimal.Decimal
+	Price  decimal.Decimal
 	Side   OrderSide
 }
 
@@ -524,9 +525,9 @@ func NewTradeFromRaw(pair string, raw []interface{}) (o *Trade, err error) {
 		return o, fmt.Errorf("data slice too short for trade: %#v", raw)
 	}
 
-	amt := f64ValOrZero(raw[2])
+	amt := DecValOrZero(raw[2])
 	var side OrderSide
-	if amt > 0 {
+	if amt.Cmp(decimal.Zero) > 0 {
 		side = Bid
 	} else {
 		side = Ask
@@ -534,10 +535,10 @@ func NewTradeFromRaw(pair string, raw []interface{}) (o *Trade, err error) {
 
 	o = &Trade{
 		Pair:   pair,
-		ID:     i64ValOrZero(raw[0]),
-		MTS:    i64ValOrZero(raw[1]),
-		Amount: math.Abs(amt),
-		Price:  f64ValOrZero(raw[3]),
+		ID:     Int64ValOrZero(raw[0]),
+		MTS:    Int64ValOrZero(raw[1]),
+		Amount: amt.Abs(),
+		Price:  DecValOrZero(raw[3]),
 		Side:   side,
 	}
 
@@ -548,13 +549,13 @@ type TradeSnapshot struct {
 	Snapshot []*Trade
 }
 
-func NewTradeSnapshotFromRaw(pair string, raw [][]float64) (*TradeSnapshot, error) {
+func NewTradeSnapshotFromRaw(pair string, raw [][]json.Number) (*TradeSnapshot, error) {
 	if len(raw) <= 0 {
 		return nil, fmt.Errorf("data slice is too short for trade snapshot: %#v", raw)
 	}
 	snapshot := make([]*Trade, 0)
 	for _, flt := range raw {
-		t, err := NewTradeFromRaw(pair, ToInterface(flt))
+		t, err := NewTradeFromRaw(pair, toInterfaceSlice(flt))
 		if err == nil {
 			snapshot = append(snapshot, t)
 		}
@@ -570,12 +571,12 @@ type TradeExecutionUpdate struct {
 	Pair        string
 	MTS         int64
 	OrderID     int64
-	ExecAmount  float64
-	ExecPrice   float64
+	ExecAmount  decimal.Decimal
+	ExecPrice   decimal.Decimal
 	OrderType   string
-	OrderPrice  float64
+	OrderPrice  decimal.Decimal
 	Maker       int
-	Fee         float64
+	Fee         decimal.Decimal
 	FeeCurrency string
 }
 
@@ -583,26 +584,26 @@ type TradeExecutionUpdate struct {
 func NewTradeExecutionUpdateFromRaw(raw []interface{}) (o *TradeExecutionUpdate, err error) {
 	if len(raw) == 4 {
 		o = &TradeExecutionUpdate{
-			ID:         i64ValOrZero(raw[0]),
-			MTS:        i64ValOrZero(raw[1]),
-			ExecAmount: f64ValOrZero(raw[2]),
-			ExecPrice:  f64ValOrZero(raw[3]),
+			ID:         Int64ValOrZero(raw[0]),
+			MTS:        Int64ValOrZero(raw[1]),
+			ExecAmount: DecValOrZero(raw[2]),
+			ExecPrice:  DecValOrZero(raw[3]),
 		}
 		return
 	}
 	if len(raw) == 11 {
 		o = &TradeExecutionUpdate{
-			ID:          i64ValOrZero(raw[0]),
-			Pair:        sValOrEmpty(raw[1]),
-			MTS:         i64ValOrZero(raw[2]),
-			OrderID:     i64ValOrZero(raw[3]),
-			ExecAmount:  f64ValOrZero(raw[4]),
-			ExecPrice:   f64ValOrZero(raw[5]),
-			OrderType:   sValOrEmpty(raw[6]),
-			OrderPrice:  f64ValOrZero(raw[7]),
-			Maker:       iValOrZero(raw[8]),
-			Fee:         f64ValOrZero(raw[9]),
-			FeeCurrency: sValOrEmpty(raw[10]),
+			ID:          Int64ValOrZero(raw[0]),
+			Pair:        strValOrEmpty(raw[1]),
+			MTS:         Int64ValOrZero(raw[2]),
+			OrderID:     Int64ValOrZero(raw[3]),
+			ExecAmount:  DecValOrZero(raw[4]),
+			ExecPrice:   DecValOrZero(raw[5]),
+			OrderType:   strValOrEmpty(raw[6]),
+			OrderPrice:  DecValOrZero(raw[7]),
+			Maker:       int(Int64ValOrZero(raw[8])),
+			Fee:         DecValOrZero(raw[9]),
+			FeeCurrency: strValOrEmpty(raw[10]),
 		}
 		return
 	}
@@ -644,10 +645,10 @@ type TradeExecution struct {
 	Pair       string
 	MTS        int64
 	OrderID    int64
-	Amount     float64
-	Price      float64
+	Amount     decimal.Decimal
+	Price      decimal.Decimal
 	OrderType  string
-	OrderPrice float64
+	OrderPrice decimal.Decimal
 	Maker      int
 }
 
@@ -659,18 +660,18 @@ func NewTradeExecutionFromRaw(raw []interface{}) (o *TradeExecution, err error) 
 
 	// trade executions sometimes omit order type, price, and maker flag
 	o = &TradeExecution{
-		ID:      i64ValOrZero(raw[0]),
-		Pair:    sValOrEmpty(raw[1]),
-		MTS:     i64ValOrZero(raw[2]),
-		OrderID: i64ValOrZero(raw[3]),
-		Amount:  f64ValOrZero(raw[4]),
-		Price:   f64ValOrZero(raw[5]),
+		ID:      Int64ValOrZero(raw[0]),
+		Pair:    strValOrEmpty(raw[1]),
+		MTS:     Int64ValOrZero(raw[2]),
+		OrderID: Int64ValOrZero(raw[3]),
+		Amount:  DecValOrZero(raw[4]),
+		Price:   DecValOrZero(raw[5]),
 	}
 
 	if len(raw) >= 9 {
-		o.OrderType = sValOrEmpty(raw[6])
-		o.OrderPrice = f64ValOrZero(raw[7])
-		o.Maker = iValOrZero(raw[8])
+		o.OrderType = strValOrEmpty(raw[6])
+		o.OrderPrice = DecValOrZero(raw[7])
+		o.Maker = int(Int64ValOrZero(raw[8]))
 	}
 
 	return
@@ -679,28 +680,28 @@ func NewTradeExecutionFromRaw(raw []interface{}) (o *TradeExecution, err error) 
 type Wallet struct {
 	Type              string
 	Currency          string
-	Balance           float64
-	UnsettledInterest float64
-	BalanceAvailable  float64
+	Balance           decimal.Decimal
+	UnsettledInterest decimal.Decimal
+	BalanceAvailable  decimal.Decimal
 }
 
 func NewWalletFromRaw(raw []interface{}) (o *Wallet, err error) {
 	if len(raw) == 4 {
 		o = &Wallet{
-			Type:              sValOrEmpty(raw[0]),
-			Currency:          sValOrEmpty(raw[1]),
-			Balance:           f64ValOrZero(raw[2]),
-			UnsettledInterest: f64ValOrZero(raw[3]),
+			Type:              strValOrEmpty(raw[0]),
+			Currency:          strValOrEmpty(raw[1]),
+			Balance:           DecValOrZero(raw[2]),
+			UnsettledInterest: DecValOrZero(raw[3]),
 		}
 	} else if len(raw) < 5 {
 		return o, fmt.Errorf("data slice too short for wallet: %#v", raw)
 	} else {
 		o = &Wallet{
-			Type:              sValOrEmpty(raw[0]),
-			Currency:          sValOrEmpty(raw[1]),
-			Balance:           f64ValOrZero(raw[2]),
-			UnsettledInterest: f64ValOrZero(raw[3]),
-			BalanceAvailable:  f64ValOrZero(raw[4]),
+			Type:              strValOrEmpty(raw[0]),
+			Currency:          strValOrEmpty(raw[1]),
+			Balance:           DecValOrZero(raw[2]),
+			UnsettledInterest: DecValOrZero(raw[3]),
+			BalanceAvailable:  DecValOrZero(raw[4]),
 		}
 	}
 	return
@@ -737,8 +738,8 @@ func NewWalletSnapshotFromRaw(raw []interface{}) (s *WalletSnapshot, err error) 
 }
 
 type BalanceInfo struct {
-	TotalAUM float64
-	NetAUM   float64
+	TotalAUM decimal.Decimal
+	NetAUM   decimal.Decimal
 	/*WalletType string
 	Currency   string*/
 }
@@ -749,8 +750,8 @@ func NewBalanceInfoFromRaw(raw []interface{}) (o *BalanceInfo, err error) {
 	}
 
 	o = &BalanceInfo{
-		TotalAUM: f64ValOrZero(raw[0]),
-		NetAUM:   f64ValOrZero(raw[1]),
+		TotalAUM: DecValOrZero(raw[0]),
+		NetAUM:   DecValOrZero(raw[1]),
 		/*WalletType: sValOrEmpty(raw[2]),
 		Currency:   sValOrEmpty(raw[3]),*/
 	}
@@ -798,7 +799,7 @@ func NewMarginInfoFromRaw(raw []interface{}) (o interface{}, err error) {
 
 type MarginInfoUpdate struct {
 	Symbol          string
-	TradableBalance float64
+	TradableBalance decimal.Decimal
 }
 
 func NewMarginInfoUpdateFromRaw(symbol string, raw []interface{}) (o *MarginInfoUpdate, err error) {
@@ -808,17 +809,17 @@ func NewMarginInfoUpdateFromRaw(symbol string, raw []interface{}) (o *MarginInfo
 
 	o = &MarginInfoUpdate{
 		Symbol:          symbol,
-		TradableBalance: f64ValOrZero(raw[0]),
+		TradableBalance: DecValOrZero(raw[0]),
 	}
 
 	return
 }
 
 type MarginInfoBase struct {
-	UserProfitLoss float64
-	UserSwaps      float64
-	MarginBalance  float64
-	MarginNet      float64
+	UserProfitLoss decimal.Decimal
+	UserSwaps      decimal.Decimal
+	MarginBalance  decimal.Decimal
+	MarginNet      decimal.Decimal
 }
 
 func NewMarginInfoBaseFromRaw(raw []interface{}) (o *MarginInfoBase, err error) {
@@ -827,10 +828,10 @@ func NewMarginInfoBaseFromRaw(raw []interface{}) (o *MarginInfoBase, err error) 
 	}
 
 	o = &MarginInfoBase{
-		UserProfitLoss: f64ValOrZero(raw[0]),
-		UserSwaps:      f64ValOrZero(raw[1]),
-		MarginBalance:  f64ValOrZero(raw[2]),
-		MarginNet:      f64ValOrZero(raw[3]),
+		UserProfitLoss: DecValOrZero(raw[0]),
+		UserSwaps:      DecValOrZero(raw[1]),
+		MarginBalance:  DecValOrZero(raw[2]),
+		MarginNet:      DecValOrZero(raw[3]),
 	}
 
 	return
@@ -838,10 +839,10 @@ func NewMarginInfoBaseFromRaw(raw []interface{}) (o *MarginInfoBase, err error) 
 
 type FundingInfo struct {
 	Symbol       string
-	YieldLoan    float64
-	YieldLend    float64
-	DurationLoan float64
-	DurationLend float64
+	YieldLoan    decimal.Decimal
+	YieldLend    decimal.Decimal
+	DurationLoan decimal.Decimal
+	DurationLend decimal.Decimal
 }
 
 func NewFundingInfoFromRaw(raw []interface{}) (o *FundingInfo, err error) {
@@ -865,10 +866,10 @@ func NewFundingInfoFromRaw(raw []interface{}) (o *FundingInfo, err error) {
 
 	o = &FundingInfo{
 		Symbol:       sym,
-		YieldLoan:    f64ValOrZero(data[0]),
-		YieldLend:    f64ValOrZero(data[1]),
-		DurationLoan: f64ValOrZero(data[2]),
-		DurationLend: f64ValOrZero(data[3]),
+		YieldLoan:    DecValOrZero(data[0]),
+		YieldLend:    DecValOrZero(data[1]),
+		DurationLoan: DecValOrZero(data[2]),
+		DurationLend: DecValOrZero(data[3]),
 	}
 
 	return
@@ -888,18 +889,18 @@ type Offer struct {
 	Symbol     string
 	MTSCreated int64
 	MTSUpdated int64
-	Amout      float64
-	AmountOrig float64
+	Amount     decimal.Decimal
+	AmountOrig decimal.Decimal
 	Type       string
 	Flags      interface{}
 	Status     OfferStatus
-	Rate       float64
+	Rate       decimal.Decimal
 	Period     int64
 	Notify     bool
 	Hidden     bool
 	Insure     bool
 	Renew      bool
-	RateReal   float64
+	RateReal   decimal.Decimal
 }
 
 func NewOfferFromRaw(raw []interface{}) (o *Offer, err error) {
@@ -908,22 +909,22 @@ func NewOfferFromRaw(raw []interface{}) (o *Offer, err error) {
 	}
 
 	o = &Offer{
-		ID:         i64ValOrZero(raw[0]),
-		Symbol:     sValOrEmpty(raw[1]),
-		MTSCreated: i64ValOrZero(raw[2]),
-		MTSUpdated: i64ValOrZero(raw[3]),
-		Amout:      f64ValOrZero(raw[4]),
-		AmountOrig: f64ValOrZero(raw[5]),
-		Type:       sValOrEmpty(raw[6]),
+		ID:         Int64ValOrZero(raw[0]),
+		Symbol:     strValOrEmpty(raw[1]),
+		MTSCreated: Int64ValOrZero(raw[2]),
+		MTSUpdated: Int64ValOrZero(raw[3]),
+		Amount:     DecValOrZero(raw[4]),
+		AmountOrig: DecValOrZero(raw[5]),
+		Type:       strValOrEmpty(raw[6]),
 		Flags:      raw[9],
-		Status:     OfferStatus(sValOrEmpty(raw[10])),
-		Rate:       f64ValOrZero(raw[14]),
-		Period:     i64ValOrZero(raw[15]),
+		Status:     OfferStatus(strValOrEmpty(raw[10])),
+		Rate:       DecValOrZero(raw[14]),
+		Period:     Int64ValOrZero(raw[15]),
 		Notify:     bValOrFalse(raw[16]),
 		Hidden:     bValOrFalse(raw[17]),
 		Insure:     bValOrFalse(raw[18]),
 		Renew:      bValOrFalse(raw[19]),
-		RateReal:   f64ValOrZero(raw[20]),
+		RateReal:   DecValOrZero(raw[20]),
 	}
 
 	return
@@ -981,10 +982,10 @@ type Credit struct {
 	Side          string
 	MTSCreated    int64
 	MTSUpdated    int64
-	Amout         float64
+	Amout         decimal.Decimal
 	Flags         interface{}
 	Status        CreditStatus
-	Rate          float64
+	Rate          decimal.Decimal
 	Period        int64
 	MTSOpened     int64
 	MTSLastPayout int64
@@ -992,7 +993,7 @@ type Credit struct {
 	Hidden        bool
 	Insure        bool
 	Renew         bool
-	RateReal      float64
+	RateReal      decimal.Decimal
 	NoClose       bool
 	PositionPair  string
 }
@@ -1003,25 +1004,25 @@ func NewCreditFromRaw(raw []interface{}) (o *Credit, err error) {
 	}
 
 	o = &Credit{
-		ID:            i64ValOrZero(raw[0]),
-		Symbol:        sValOrEmpty(raw[1]),
-		Side:          sValOrEmpty(raw[2]),
-		MTSCreated:    i64ValOrZero(raw[3]),
-		MTSUpdated:    i64ValOrZero(raw[4]),
-		Amout:         f64ValOrZero(raw[5]),
+		ID:            Int64ValOrZero(raw[0]),
+		Symbol:        strValOrEmpty(raw[1]),
+		Side:          strValOrEmpty(raw[2]),
+		MTSCreated:    Int64ValOrZero(raw[3]),
+		MTSUpdated:    Int64ValOrZero(raw[4]),
+		Amout:         DecValOrZero(raw[5]),
 		Flags:         raw[6],
-		Status:        CreditStatus(sValOrEmpty(raw[7])),
-		Rate:          f64ValOrZero(raw[11]),
-		Period:        i64ValOrZero(raw[12]),
-		MTSOpened:     i64ValOrZero(raw[13]),
-		MTSLastPayout: i64ValOrZero(raw[14]),
+		Status:        CreditStatus(strValOrEmpty(raw[7])),
+		Rate:          DecValOrZero(raw[11]),
+		Period:        Int64ValOrZero(raw[12]),
+		MTSOpened:     Int64ValOrZero(raw[13]),
+		MTSLastPayout: Int64ValOrZero(raw[14]),
 		Notify:        bValOrFalse(raw[15]),
 		Hidden:        bValOrFalse(raw[16]),
 		Insure:        bValOrFalse(raw[17]),
 		Renew:         bValOrFalse(raw[18]),
-		RateReal:      f64ValOrZero(raw[19]),
+		RateReal:      DecValOrZero(raw[19]),
 		NoClose:       bValOrFalse(raw[20]),
-		PositionPair:  sValOrEmpty(raw[21]),
+		PositionPair:  strValOrEmpty(raw[21]),
 	}
 
 	return
@@ -1078,10 +1079,10 @@ type Loan struct {
 	Side          string
 	MTSCreated    int64
 	MTSUpdated    int64
-	Amout         float64
+	Amout         decimal.Decimal
 	Flags         interface{}
 	Status        LoanStatus
-	Rate          float64
+	Rate          decimal.Decimal
 	Period        int64
 	MTSOpened     int64
 	MTSLastPayout int64
@@ -1089,7 +1090,7 @@ type Loan struct {
 	Hidden        bool
 	Insure        bool
 	Renew         bool
-	RateReal      float64
+	RateReal      decimal.Decimal
 	NoClose       bool
 }
 
@@ -1099,23 +1100,23 @@ func NewLoanFromRaw(raw []interface{}) (o *Loan, err error) {
 	}
 
 	o = &Loan{
-		ID:            i64ValOrZero(raw[0]),
-		Symbol:        sValOrEmpty(raw[1]),
-		Side:          sValOrEmpty(raw[2]),
-		MTSCreated:    i64ValOrZero(raw[3]),
-		MTSUpdated:    i64ValOrZero(raw[4]),
-		Amout:         f64ValOrZero(raw[5]),
+		ID:            Int64ValOrZero(raw[0]),
+		Symbol:        strValOrEmpty(raw[1]),
+		Side:          strValOrEmpty(raw[2]),
+		MTSCreated:    Int64ValOrZero(raw[3]),
+		MTSUpdated:    Int64ValOrZero(raw[4]),
+		Amout:         DecValOrZero(raw[5]),
 		Flags:         raw[6],
-		Status:        LoanStatus(sValOrEmpty(raw[7])),
-		Rate:          f64ValOrZero(raw[11]),
-		Period:        i64ValOrZero(raw[12]),
-		MTSOpened:     i64ValOrZero(raw[13]),
-		MTSLastPayout: i64ValOrZero(raw[14]),
+		Status:        LoanStatus(strValOrEmpty(raw[7])),
+		Rate:          DecValOrZero(raw[11]),
+		Period:        Int64ValOrZero(raw[12]),
+		MTSOpened:     Int64ValOrZero(raw[13]),
+		MTSLastPayout: Int64ValOrZero(raw[14]),
 		Notify:        bValOrFalse(raw[15]),
 		Hidden:        bValOrFalse(raw[16]),
 		Insure:        bValOrFalse(raw[17]),
 		Renew:         bValOrFalse(raw[18]),
-		RateReal:      f64ValOrZero(raw[19]),
+		RateReal:      DecValOrZero(raw[19]),
 		NoClose:       bValOrFalse(raw[20]),
 	}
 
@@ -1163,8 +1164,8 @@ type FundingTrade struct {
 	Symbol     string
 	MTSCreated int64
 	OfferID    int64
-	Amount     float64
-	Rate       float64
+	Amount     decimal.Decimal
+	Rate       decimal.Decimal
 	Period     int64
 	Maker      int64
 }
@@ -1175,14 +1176,14 @@ func NewFundingTradeFromRaw(raw []interface{}) (o *FundingTrade, err error) {
 	}
 
 	o = &FundingTrade{
-		ID:         i64ValOrZero(raw[0]),
-		Symbol:     sValOrEmpty(raw[1]),
-		MTSCreated: i64ValOrZero(raw[2]),
-		OfferID:    i64ValOrZero(raw[3]),
-		Amount:     f64ValOrZero(raw[4]),
-		Rate:       f64ValOrZero(raw[5]),
-		Period:     i64ValOrZero(raw[6]),
-		Maker:      i64ValOrZero(raw[7]),
+		ID:         Int64ValOrZero(raw[0]),
+		Symbol:     strValOrEmpty(raw[1]),
+		MTSCreated: Int64ValOrZero(raw[2]),
+		OfferID:    Int64ValOrZero(raw[3]),
+		Amount:     DecValOrZero(raw[4]),
+		Rate:       DecValOrZero(raw[5]),
+		Period:     Int64ValOrZero(raw[6]),
+		Maker:      Int64ValOrZero(raw[7]),
 	}
 
 	return
@@ -1238,13 +1239,13 @@ func NewNotificationFromRaw(raw []interface{}) (o *Notification, err error) {
 	}
 
 	o = &Notification{
-		MTS:       i64ValOrZero(raw[0]),
-		Type:      sValOrEmpty(raw[1]),
-		MessageID: i64ValOrZero(raw[2]),
+		MTS:       Int64ValOrZero(raw[0]),
+		Type:      strValOrEmpty(raw[1]),
+		MessageID: Int64ValOrZero(raw[2]),
 		//NotifyInfo: raw[4],
-		Code:   i64ValOrZero(raw[5]),
-		Status: sValOrEmpty(raw[6]),
-		Text:   sValOrEmpty(raw[7]),
+		Code:   Int64ValOrZero(raw[5]),
+		Status: strValOrEmpty(raw[6]),
+		Text:   strValOrEmpty(raw[7]),
 	}
 
 	// raw[4] = notify info
@@ -1290,19 +1291,19 @@ func NewNotificationFromRaw(raw []interface{}) (o *Notification, err error) {
 
 type Ticker struct {
 	Symbol          string
-	FRR             float64
-	Bid             float64
+	FRR             decimal.Decimal
+	Bid             decimal.Decimal
 	BidPeriod       int64
-	BidSize         float64
-	Ask             float64
+	BidSize         decimal.Decimal
+	Ask             decimal.Decimal
 	AskPeriod       int64
-	AskSize         float64
-	DailyChange     float64
-	DailyChangePerc float64
-	LastPrice       float64
-	Volume          float64
-	High            float64
-	Low             float64
+	AskSize         decimal.Decimal
+	DailyChange     decimal.Decimal
+	DailyChangePerc decimal.Decimal
+	LastPrice       decimal.Decimal
+	Volume          decimal.Decimal
+	High            decimal.Decimal
+	Low             decimal.Decimal
 }
 
 type TickerUpdate Ticker
@@ -1310,13 +1311,13 @@ type TickerSnapshot struct {
 	Snapshot []*Ticker
 }
 
-func NewTickerSnapshotFromRaw(symbol string, raw [][]float64) (*TickerSnapshot, error) {
+func NewTickerSnapshotFromRaw(symbol string, raw [][]json.Number) (*TickerSnapshot, error) {
 	if len(raw) <= 0 {
 		return nil, fmt.Errorf("data slice too short for ticker snapshot: %#v", raw)
 	}
 	snap := make([]*Ticker, 0)
 	for _, f := range raw {
-		c, err := NewTickerFromRaw(symbol, ToInterface(f))
+		c, err := NewTickerFromRaw(symbol, toInterfaceSlice(f))
 		if err == nil {
 			snap = append(snap, c)
 		}
@@ -1331,16 +1332,16 @@ func NewTickerFromRaw(symbol string, raw []interface{}) (t *Ticker, err error) {
 
 	t = &Ticker{
 		Symbol:          symbol,
-		Bid:             f64ValOrZero(raw[0]),
-		BidSize:         f64ValOrZero(raw[1]),
-		Ask:             f64ValOrZero(raw[2]),
-		AskSize:         f64ValOrZero(raw[3]),
-		DailyChange:     f64ValOrZero(raw[4]),
-		DailyChangePerc: f64ValOrZero(raw[5]),
-		LastPrice:       f64ValOrZero(raw[6]),
-		Volume:          f64ValOrZero(raw[7]),
-		High:            f64ValOrZero(raw[8]),
-		Low:             f64ValOrZero(raw[9]),
+		Bid:             DecValOrZero(raw[0]),
+		BidSize:         DecValOrZero(raw[1]),
+		Ask:             DecValOrZero(raw[2]),
+		AskSize:         DecValOrZero(raw[3]),
+		DailyChange:     DecValOrZero(raw[4]),
+		DailyChangePerc: DecValOrZero(raw[5]),
+		LastPrice:       DecValOrZero(raw[6]),
+		Volume:          DecValOrZero(raw[7]),
+		High:            DecValOrZero(raw[8]),
+		Low:             DecValOrZero(raw[9]),
 	}
 
 	return
@@ -1360,13 +1361,13 @@ const (
 
 // BookUpdate represents an order book price update.
 type BookUpdate struct {
-	ID     int64      // the book update ID, optional
-	Symbol string     // book symbol
-	Price  float64    // updated price
-	Count  int64      // updated count, optional
-	Amount float64    // updated amount
-	Side   OrderSide  // side
-	Action BookAction // action (add/remove)
+	ID     int64           // the book update ID, optional
+	Symbol string          // book symbol
+	Price  decimal.Decimal // updated price
+	Count  int64           // updated count, optional
+	Amount decimal.Decimal // updated amount
+	Side   OrderSide       // side
+	Action BookAction      // action (add/remove)
 }
 
 type BookUpdateSnapshot struct {
@@ -1374,10 +1375,10 @@ type BookUpdateSnapshot struct {
 	Snapshot []*BookUpdate // book levels
 }
 
-func NewBookUpdateSnapshotFromRaw(symbol, precision string, raw [][]float64) (*BookUpdateSnapshot, error) {
+func NewBookUpdateSnapshotFromRaw(symbol, precision string, raw [][]json.Number) (*BookUpdateSnapshot, error) {
 	snap := make([]*BookUpdate, len(raw))
 	for i, f := range raw {
-		b, err := NewBookUpdateFromRaw(symbol, precision, ToInterface(f))
+		b, err := NewBookUpdateFromRaw(symbol, precision, toInterfaceSlice(f))
 		if err != nil {
 			return nil, err
 		}
@@ -1397,32 +1398,32 @@ func NewBookUpdateFromRaw(symbol, precision string, data []interface{}) (b *Book
 	if len(data) < 3 {
 		return b, fmt.Errorf("data slice too short for book update, expected %d got %d: %#v", 3, len(data), data)
 	}
-	var px float64
+	var px decimal.Decimal
 	var id, cnt int64
-	amt := f64ValOrZero(data[2])
+	amt := DecValOrZero(data[2])
 
 	var side OrderSide
-	var actionCtrl float64
+	var actionCtrl decimal.Decimal
 	if IsRawBook(precision) {
 		// [ID, price, amount]
-		id = i64ValOrZero(data[0])
-		px = f64ValOrZero(data[1])
+		id = Int64ValOrZero(data[0])
+		px = DecValOrZero(data[1])
 		actionCtrl = px
 	} else {
 		// [price, amount, count]
-		px = f64ValOrZero(data[0])
-		cnt = i64ValOrZero(data[1])
-		actionCtrl = float64(cnt)
+		px = DecValOrZero(data[0])
+		cnt = Int64ValOrZero(data[1])
+		actionCtrl = decimal.New(cnt, 0)
 	}
 
-	if amt > 0 {
+	if amt.Cmp(decimal.Zero) > 0 {
 		side = Bid
 	} else {
 		side = Ask
 	}
 
 	var action BookAction
-	if actionCtrl <= 0 {
+	if actionCtrl.Cmp(decimal.Zero) <= 0 {
 		action = BookRemoveEntry
 	} else {
 		action = BookUpdateEntry
@@ -1430,9 +1431,9 @@ func NewBookUpdateFromRaw(symbol, precision string, data []interface{}) (b *Book
 
 	b = &BookUpdate{
 		Symbol: symbol,
-		Price:  math.Abs(px),
+		Price:  px.Abs(),
 		Count:  cnt,
-		Amount: math.Abs(amt),
+		Amount: amt.Abs(),
 		Side:   side,
 		Action: action,
 		ID:     id,
@@ -1445,42 +1446,32 @@ type Candle struct {
 	Symbol     string
 	Resolution CandleResolution
 	MTS        int64
-	Open       float64
-	Close      float64
-	High       float64
-	Low        float64
-	Volume     float64
+	Open       decimal.Decimal
+	Close      decimal.Decimal
+	High       decimal.Decimal
+	Low        decimal.Decimal
+	Volume     decimal.Decimal
 }
 
 type CandleSnapshot struct {
 	Snapshot []*Candle
 }
 
-func ToFloat64Slice(slice []interface{}) []float64 {
-	data := make([]float64, 0, len(slice))
-	for _, i := range slice {
-		if f, ok := i.(float64); ok {
-			data = append(data, f)
-		}
-	}
-	return data
-}
-
-func ToInterface(flt []float64) []interface{} {
-	data := make([]interface{}, len(flt))
-	for j, f := range flt {
+func toInterfaceSlice(nums []json.Number) []interface{} {
+	data := make([]interface{}, len(nums))
+	for j, f := range nums {
 		data[j] = f
 	}
 	return data
 }
 
-func NewCandleSnapshotFromRaw(symbol string, resolution CandleResolution, raw [][]float64) (*CandleSnapshot, error) {
+func NewCandleSnapshotFromRaw(symbol string, resolution CandleResolution, raw [][]json.Number) (*CandleSnapshot, error) {
 	if len(raw) <= 0 {
 		return nil, fmt.Errorf("data slice too short for candle snapshot: %#v", raw)
 	}
 	snap := make([]*Candle, 0)
 	for _, f := range raw {
-		c, err := NewCandleFromRaw(symbol, resolution, ToInterface(f))
+		c, err := NewCandleFromRaw(symbol, resolution, toInterfaceSlice(f))
 		if err == nil {
 			snap = append(snap, c)
 		}
@@ -1496,12 +1487,12 @@ func NewCandleFromRaw(symbol string, resolution CandleResolution, raw []interfac
 	c = &Candle{
 		Symbol:     symbol,
 		Resolution: resolution,
-		MTS:        i64ValOrZero(raw[0]),
-		Open:       f64ValOrZero(raw[1]),
-		Close:      f64ValOrZero(raw[2]),
-		High:       f64ValOrZero(raw[3]),
-		Low:        f64ValOrZero(raw[4]),
-		Volume:     f64ValOrZero(raw[5]),
+		MTS:        Int64ValOrZero(raw[0]),
+		Open:       DecValOrZero(raw[1]),
+		Close:      DecValOrZero(raw[2]),
+		High:       DecValOrZero(raw[3]),
+		Low:        DecValOrZero(raw[4]),
+		Volume:     DecValOrZero(raw[5]),
 	}
 
 	return

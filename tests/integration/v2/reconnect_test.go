@@ -118,6 +118,14 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		UserID: 1,
 		SubID:  "nonce1",
 		AuthID: "valid-auth-guid",
+		Caps: websocket.Capabilities{
+			Orders:    websocket.Capability{Read: 1},
+			Account:   websocket.Capability{Read: 1},
+			Funding:   websocket.Capability{Read: 1},
+			History:   websocket.Capability{Read: 1},
+			Wallets:   websocket.Capability{Read: 1},
+			Positions: websocket.Capability{Read: 1},
+		},
 	}
 	assert(t, &expAuthEv, authEv)
 
@@ -143,6 +151,8 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		Symbol:  "tBTCUSD",
 		SubID:   "nonce2",
 		Channel: "trades",
+		ChanID:  5,
+		Pair:    "BTCUSD",
 	}
 	assert(t, &expTradeSub, tradeSub)
 
@@ -169,6 +179,9 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		Channel:   "book",
 		Frequency: string(bitfinex.FrequencyRealtime),
 		Precision: string(bitfinex.Precision0),
+		ChanID:    8,
+		Pair:      "BTCUSD",
+		Len:       "25",
 	}
 	assert(t, &expBookSub, bookSub)
 
@@ -225,6 +238,14 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		UserID: 1,
 		SubID:  "nonce4",
 		AuthID: "valid-auth-guid",
+		Caps: websocket.Capabilities{
+			Orders:    websocket.Capability{Read: 1},
+			Account:   websocket.Capability{Read: 1},
+			Funding:   websocket.Capability{Read: 1},
+			History:   websocket.Capability{Read: 1},
+			Wallets:   websocket.Capability{Read: 1},
+			Positions: websocket.Capability{Read: 1},
+		},
 	}
 	assert(t, &expAuthEv, authEv)
 
@@ -245,6 +266,8 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		Symbol:  "tBTCUSD",
 		SubID:   "nonce5",
 		Channel: "trades",
+		ChanID:  5,
+		Pair:    "BTCUSD",
 	}
 	assert(t, &expTradeSub, tradeSub)
 	msg, err = wsService.WaitForMessage(0, 2)
@@ -266,6 +289,8 @@ func TestReconnectResubscribeWithAuth(t *testing.T) {
 		Frequency: string(bitfinex.FrequencyRealtime),
 		Precision: string(bitfinex.Precision0),
 		Len:       "25",
+		ChanID:    8,
+		Pair:      "BTCUSD",
 	}
 	assert(t, &expBookSub, bookSub)
 
@@ -340,6 +365,8 @@ func TestHeartbeatTimeoutReconnect(t *testing.T) {
 		Symbol:  "tBTCUSD",
 		SubID:   "nonce1",
 		Channel: "ticker",
+		ChanID:  5,
+		Pair:    "BTCUSD",
 	}
 	assert(t, &expTickerSub, tickerSub)
 
@@ -363,6 +390,8 @@ func TestHeartbeatTimeoutReconnect(t *testing.T) {
 		Symbol:  "tBTCUSD",
 		SubID:   "nonce2",
 		Channel: "ticker",
+		ChanID:  5,
+		Pair:    "BTCUSD",
 	}
 	assert(t, &expTickerSub, tickerSub)
 }
@@ -403,6 +432,8 @@ func TestHeartbeatNoTimeoutData(t *testing.T) {
 		Symbol:  "tBTCUSD",
 		SubID:   "nonce1",
 		Channel: "ticker",
+		ChanID:  5,
+		Pair:    "BTCUSD",
 	}
 	assert(t, &expTickerSub, tickerSub)
 
@@ -414,21 +445,22 @@ func TestHeartbeatNoTimeoutData(t *testing.T) {
 	}
 
 	tick, err := apiRecv.nextTick()
+	//fmt.Printf("!!!!!!!!!!!!!!!GOT: %v", tick)
 	if err != nil {
 		log.Fatal(err)
 	}
 	expTicker := bitfinex.Ticker{
 		Symbol:          "tBTCUSD",
-		Bid:             14957,
-		BidSize:         68.17328796,
-		Ask:             14958,
-		AskSize:         55.29588132,
-		DailyChange:     -659,
-		DailyChangePerc: -0.0422,
-		LastPrice:       14971,
-		Volume:          53723.08813995,
-		High:            16494,
-		Low:             14454,
+		Bid:             d("14957"),
+		BidSize:         d("68.17328796"),
+		Ask:             d("14958"),
+		AskSize:         d("55.29588132"),
+		DailyChange:     d("-659"),
+		DailyChangePerc: d("-0.0422"),
+		LastPrice:       d("14971"),
+		Volume:          d("53723.08813995"),
+		High:            d("16494"),
+		Low:             d("14454"),
 	}
 	assert(t, &expTicker, tick)
 

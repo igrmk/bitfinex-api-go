@@ -1,13 +1,15 @@
 package websocket
 
 import (
-	"github.com/igrmk/bitfinex-api-go/v2"
+	"encoding/json"
 	"sync"
+
+	"github.com/igrmk/bitfinex-api-go/v2"
 )
 
 type messageFactory interface {
 	Build(chanID int64, objType string, raw []interface{}) (interface{}, error)
-	BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error)
+	BuildSnapshot(chanID int64, raw [][]json.Number) (interface{}, error)
 }
 
 type TickerFactory struct {
@@ -29,7 +31,7 @@ func (f *TickerFactory) Build(chanID int64, objType string, raw []interface{}) (
 	return nil, err
 }
 
-func (f *TickerFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error) {
+func (f *TickerFactory) BuildSnapshot(chanID int64, raw [][]json.Number) (interface{}, error) {
 	sub, err := f.subscriptions.lookupByChannelID(chanID)
 	if err == nil {
 		return bitfinex.NewTickerSnapshotFromRaw(sub.Request.Symbol, raw)
@@ -59,7 +61,7 @@ func (f *TradeFactory) Build(chanID int64, objType string, raw []interface{}) (i
 	return nil, err
 }
 
-func (f *TradeFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error) {
+func (f *TradeFactory) BuildSnapshot(chanID int64, raw [][]json.Number) (interface{}, error) {
 	sub, err := f.subscriptions.lookupByChannelID(chanID)
 	if err == nil {
 		return bitfinex.NewTradeSnapshotFromRaw(sub.Request.Symbol, raw)
@@ -96,7 +98,7 @@ func (f *BookFactory) Build(chanID int64, objType string, raw []interface{}) (in
 	return nil, err
 }
 
-func (f *BookFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error) {
+func (f *BookFactory) BuildSnapshot(chanID int64, raw [][]json.Number) (interface{}, error) {
 	sub, err := f.subscriptions.lookupByChannelID(chanID)
 	update, err2 := bitfinex.NewBookUpdateSnapshotFromRaw(sub.Request.Symbol, sub.Request.Precision, raw)
 	if err2 != nil {
@@ -142,7 +144,7 @@ func (f *CandlesFactory) Build(chanID int64, objType string, raw []interface{}) 
 	return candle, err
 }
 
-func (f *CandlesFactory) BuildSnapshot(chanID int64, raw [][]float64) (interface{}, error) {
+func (f *CandlesFactory) BuildSnapshot(chanID int64, raw [][]json.Number) (interface{}, error) {
 	sub, err := f.subscriptions.lookupByChannelID(chanID)
 	if err != nil {
 		return nil, err

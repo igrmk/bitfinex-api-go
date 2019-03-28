@@ -3,7 +3,6 @@ package websocket
 import (
 	"hash/crc32"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -55,7 +54,7 @@ func (ob *Orderbook) UpdateWith(bu *bitfinex.BookUpdate) {
 
 	// match price level
 	for index, sOrder := range *side {
-		if sOrder.Price == bu.Price {
+		if sOrder.Price.Cmp(bu.Price) == 0 {
 			if index+1 > len(*(side)) {
 				return
 			}
@@ -72,13 +71,10 @@ func (ob *Orderbook) UpdateWith(bu *bitfinex.BookUpdate) {
 	*side = append(*side, bu)
 	// add to the orderbook and sort lowest to highest
 	sort.Slice(*side, func(i, j int) bool {
-		if i >= len(*(side)) || j >= len(*(side)) {
-			return false
-		}
 		if bu.Side == bitfinex.Ask {
-			return (*side)[i].Price < (*side)[j].Price
+			return (*side)[i].Price.Cmp((*side)[j].Price) < 0
 		} else {
-			return (*side)[i].Price > (*side)[j].Price
+			return (*side)[i].Price.Cmp((*side)[j].Price) > 0
 		}
 	})
 }
@@ -90,23 +86,19 @@ func (ob *Orderbook) Checksum() uint32 {
 	for i := 0; i < 25; i++ {
 		if len(ob.bids) > i {
 			// append bid
-			price := prepareNumber(ob.bids[i].Price)
-			amount := prepareNumber(ob.bids[i].Amount)
+			price := ob.bids[i].Price.String()
+			amount := ob.bids[i].Amount.String()
 			checksumItems = append(checksumItems, price)
 			checksumItems = append(checksumItems, amount)
 		}
 		if len(ob.asks) > i {
 			// append ask
-			price := prepareNumber(ob.asks[i].Price)
-			amount := prepareNumber(-ob.asks[i].Amount)
+			price := ob.asks[i].Price.String()
+			amount := ob.asks[i].Amount.Neg().String()
 			checksumItems = append(checksumItems, price)
 			checksumItems = append(checksumItems, amount)
 		}
 	}
 	checksumStrings := strings.Join(checksumItems, ":")
 	return crc32.ChecksumIEEE([]byte(checksumStrings))
-}
-
-func prepareNumber(x float64) string {
-	return strconv.FormatFloat(x, 'f', -1, 64)
 }

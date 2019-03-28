@@ -63,8 +63,8 @@ func TestWebsocketOrder(t *testing.T) {
 		CID:    cid,
 		Type:   bitfinex.OrderTypeExchangeLimit,
 		Symbol: bitfinex.TradingPrefix + bitfinex.BTCUSD,
-		Amount: 1.0,
-		Price:  28.5,
+		Amount: d("1.0"),
+		Price:  d("28.5"),
 	}
 
 	ctx, cxl1 := context.WithTimeout(context.Background(), 2*time.Second)

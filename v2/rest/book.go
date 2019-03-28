@@ -1,10 +1,12 @@
 package rest
 
 import (
-	"github.com/igrmk/bitfinex-api-go/v2"
+	"encoding/json"
 	"net/url"
 	"path"
 	"strconv"
+
+	"github.com/igrmk/bitfinex-api-go/v2"
 )
 
 type BookService struct {
@@ -21,12 +23,12 @@ func (b *BookService) All(symbol string, precision bitfinex.BookPrecision, price
 		return nil, err
 	}
 
-	data := make([][]float64, 0, len(raw))
+	data := make([][]json.Number, 0, len(raw))
 	for _, ifacearr := range raw {
 		if arr, ok := ifacearr.([]interface{}); ok {
-			sub := make([]float64, 0, len(arr))
+			sub := make([]json.Number, 0, len(arr))
 			for _, iface := range arr {
-				if flt, ok := iface.(float64); ok {
+				if flt, ok := iface.(json.Number); ok {
 					sub = append(sub, flt)
 				}
 			}
